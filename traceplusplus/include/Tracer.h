@@ -17,10 +17,6 @@ namespace trc
     glm::fvec3 position;
     glm::fvec3 rotation;
     glm::fvec3 scale;
-
-    glm::fmat4 position;
-    glm::fmat4 rotation;
-    glm::fmat4 scale;
   };
 
   struct TCamera
