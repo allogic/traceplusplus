@@ -1,5 +1,5 @@
 #pragma once
-
+/*
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -79,3 +79,4 @@ private:
   glm::fmat4 mRotationTensor;
   glm::fmat4 mScaleTensor;
 };
+*/
