@@ -95,6 +95,36 @@ struct TVertexArrayLayout
 //  CSphere mSphere{ { 0, 0, 0 }, 0.5f };
 //};
 
+constexpr const s8 TraceVertexSource[] = R"glsl(
+layout (location = 0) in vec3 lPosition;
+
+in vec2 iScreenSize;
+
+uniform mat4 uProjection;
+uniform mat4 uView;
+uniform mat4 uModel;
+
+out vec2 oScreenSize;
+
+void main()
+{
+  oScreenSize = iScreenSize;
+
+  gl_Position = uProjection * uView * uModel * vec4(lPosition, 1.);
+}
+)glsl";
+
+constexpr const s8 TraceFragmentSource[] = R"glsl(
+in vec2 iScreenSize;
+
+out vec4 oFragColor;
+
+void main()
+{
+  oFragColor = vec4(iScreenSize, 0., 1.);
+}
+)glsl";
+
 s32 CheckStatus(s32 shader, s32 type, std::string& log)
 {
   s32 compileInfo;
@@ -108,6 +138,25 @@ s32 CheckStatus(s32 shader, s32 type, std::string& log)
     log.resize(compileInfoSize);
 
     glGetShaderInfoLog(shader, compileInfoSize, nullptr, &log[0]);
+
+    return false;
+  }
+
+  return true;
+}
+
+s32 LinkShaders(u32 program, u32 vertexShader, u32 fragmentShader)
+{
+  glAttachShader(program, vertexShader);
+  glAttachShader(program, fragmentShader);
+
+  glLinkProgram(program);
+
+  std::string log;
+
+  if (!CheckStatus(program, GL_LINK_STATUS, log))
+  {
+    std::printf(log.c_str());
 
     return false;
   }
@@ -135,53 +184,8 @@ s32 CompileShader(u32 shader, const std::string& source)
   return true;
 }
 
-s32 LinkShaders(u32 program, u32 vertexShader, u32 fragmentShader)
+s32 CompileShaders(u32& program, const std::string& vertexSource, const std::string& fragmentSource)
 {
-  glAttachShader(program, vertexShader);
-  glAttachShader(program, fragmentShader);
-
-  glLinkProgram(program);
-
-  std::string log;
-
-  if (!CheckStatus(program, GL_LINK_STATUS, log))
-  {
-    std::printf(log.c_str());
-
-    return false;
-  }
-
-  return true;
-}
-
-s32 LoadShader(const std::string& file, u32& program)
-{
-  std::fstream fileStream;
-
-  fileStream.open(file);
-
-  if (!fileStream.is_open())
-    return false;
-
-  std::stringstream stringStream;
-  std::string line;
-
-  while (std::getline(fileStream, line))
-    stringStream << line << '\n';
-
-  fileStream.close();
-
-  std::string shaderSource(stringStream.str());
-
-  std::size_t vertexPos = shaderSource.find("#vertex");
-  std::size_t fragmentPos = shaderSource.find("#fragment");
-
-  if (vertexPos == std::string::npos || fragmentPos == std::string::npos)
-    return false;
-
-  std::string vertexSource(shaderSource.substr(vertexPos + 7, fragmentPos - 9));
-  std::string fragmentSource(shaderSource.substr(fragmentPos + 9, shaderSource.size() - 1));
-
   s32 vertexShader = glCreateShader(GL_VERTEX_SHADER);
 
   if (!CompileShader(vertexShader, vertexSource))
@@ -248,7 +252,7 @@ s32 main()
 
   u32 program;
 
-  if (!LoadShader("C:\\Users\\Michael\\Downloads\\traceplusplus\\traceplusplus\\shaders\\Tracer.glsl", program))
+  if (!CompileShaders(program, TraceVertexSource, TraceFragmentSource))
     return FAILED_LOADING_SHADER;
 
   u32 uProjection;
