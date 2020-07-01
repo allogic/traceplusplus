@@ -8,6 +8,9 @@
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/constants.hpp>
+
+typedef bool           b8;
 
 typedef char           s8;
 typedef unsigned char  u8;
@@ -21,29 +24,27 @@ typedef glm::fvec3    fv3;
 
 typedef glm::fmat4    fm4;
 
+constexpr f32 PI = glm::pi<f32>();
+
 struct TTransform
 {
-  fv3 position        = {};
-  fv3 rotation        = {};
-  fv3 scale           = { 1.f, 1.f, 1.f };
-
-  fm4 positionTensor  = {};
-  fm4 rotationTensor  = {};
-  fm4 scaleTensor     = {};
+  fv3 position = {};
+  fv3 rotation = {};
+  fv3 scale    = { 1.f, 1.f, 1.f };
 };
 
 template<u32 Width, u32 Height, u32 AttrCount, u32 IndexCount>
 struct TVertexLayout
 {
-  constexpr static const u32   Width = Width;
-  constexpr static const u32   Height = Height;
+  constexpr static const u32 Width = Width;
+  constexpr static const u32 Height = Height;
 
-  constexpr static const u32   AttrCount = AttrCount;
-  constexpr static const u32   VertexCount = Width * Height;
-  constexpr static const u32   IndexCount = IndexCount;
+  constexpr static const u32 AttrCount = AttrCount;
+  constexpr static const u32 VertexCount = Width * Height;
+  constexpr static const u32 IndexCount = IndexCount;
 
-  constexpr static const u32   VertexLocation = 0;
-  constexpr static const u32   IndexLocation = 1;
+  constexpr static const u32 VertexLocation = 0;
+  constexpr static const u32 IndexLocation = 1;
 
   TVertexLayout()
   {
@@ -51,21 +52,25 @@ struct TVertexLayout
     pIndices = (u32*)std::calloc(IndexCount, sizeof(u32));
   }
 
-  u32                          vao              = 0;
-  u32                          pVbos[AttrCount] = { 0, 0 };
-  f32*                         pVertices        = nullptr;
-  u32*                         pIndices         = nullptr;
-  TTransform                   transform        = {};
+  u32                        vao = 0;
+  u32                        pVbos[AttrCount] = { 0, 0 };
+  f32*                       pVertices = nullptr;
+  u32*                       pIndices = nullptr;
+  TTransform                 transform = {};
 };
 
 struct TCamera
 {
-  TTransform transform = {};
+  enum class TProjection { Orthographic, Perspective };
+
+  TProjection projection = TProjection::Perspective;
+  TTransform  transform  = {};
+  fv3         up         = { 0.f, 1.f, 0.f };
+  fv3         right      = {};
+  fv3         forward    = { 0.f, 0.f, 1.f };
 };
 
 #include <string>
-#include <fstream>
-#include <sstream>
 
 #define GL_MAJOR 4
 #define GL_MINOR 0
@@ -291,8 +296,6 @@ static fv2 sScreenSize = { 1280, 720 };
 
 s32 main()
 {
-  GLFWwindow* pWindow = nullptr;
-
   if (!glfwInit())
     return FAILED_GLFW_INIT;
 
@@ -301,6 +304,8 @@ s32 main()
   glfwWindowHint(GLFW_SAMPLES, 0);
   glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
   glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, 1);
+
+  GLFWwindow* pWindow = nullptr;
 
   if (pWindow = glfwCreateWindow((s32)sScreenSize.x, (s32)sScreenSize.y, "Tracer", nullptr, nullptr), !pWindow)
     return FAILED_GLFW_WINDOW;
@@ -335,27 +340,27 @@ s32 main()
   TVertexLayout<4, 5, 2, 6> quadLayout;
   quadLayout.pVertices[0] = -1.f;
   quadLayout.pVertices[1] = -1.f;
-  quadLayout.pVertices[2] =  0.f;
-  quadLayout.pVertices[3] =  0.f;
-  quadLayout.pVertices[4] =  0.f;
+  quadLayout.pVertices[2] = 0.f;
+  quadLayout.pVertices[3] = 0.f;
+  quadLayout.pVertices[4] = 0.f;
 
-  quadLayout.pVertices[5] =  1.f;
+  quadLayout.pVertices[5] = 1.f;
   quadLayout.pVertices[6] = -1.f;
-  quadLayout.pVertices[7] =  0.f;
-  quadLayout.pVertices[8] =  1.f;
-  quadLayout.pVertices[9] =  0.f;
+  quadLayout.pVertices[7] = 0.f;
+  quadLayout.pVertices[8] = 1.f;
+  quadLayout.pVertices[9] = 0.f;
 
   quadLayout.pVertices[10] = -1.f;
-  quadLayout.pVertices[11] =  1.f;
-  quadLayout.pVertices[12] =  0.f;
-  quadLayout.pVertices[13] =  0.f;
-  quadLayout.pVertices[14] =  1.f;
+  quadLayout.pVertices[11] = 1.f;
+  quadLayout.pVertices[12] = 0.f;
+  quadLayout.pVertices[13] = 0.f;
+  quadLayout.pVertices[14] = 1.f;
 
-  quadLayout.pVertices[15] =  1.f;
-  quadLayout.pVertices[16] =  1.f;
-  quadLayout.pVertices[17] =  0.f;
-  quadLayout.pVertices[18] =  1.f;
-  quadLayout.pVertices[19] =  1.f;
+  quadLayout.pVertices[15] = 1.f;
+  quadLayout.pVertices[16] = 1.f;
+  quadLayout.pVertices[17] = 0.f;
+  quadLayout.pVertices[18] = 1.f;
+  quadLayout.pVertices[19] = 1.f;
 
   quadLayout.pIndices[0] = 3;
   quadLayout.pIndices[1] = 1;
@@ -393,7 +398,7 @@ s32 main()
   f32 renderRate = 1.f / fps;
   f32 prevRenderTime = 0.f;
 
-  fv3 cameraPosition = { 0.f, 0.f, -10.f };
+  TCamera camera;
 
   fm4 projection;
   fm4 view;
@@ -401,8 +406,6 @@ s32 main()
 
   while (sStatus > 0)
   {
-    glfwPollEvents();
-
     time = (f32)glfwGetTime();
     deltaTime = time - prevTime;
     renderRate = 1.f / fps;
@@ -422,13 +425,36 @@ s32 main()
     ImGui::Begin("Debug");
 
     ImGui::SliderInt("Fps", &fps, 0, 120);
-    ImGui::SliderFloat3("Camera Position", &cameraPosition[0], -10, 10);
+
+    ImGui::Checkbox("Enable perspective", (b8*)&camera.projection);
+    ImGui::SliderFloat3("Camera Position", &camera.transform.position[0], -2, 2);
+    ImGui::SliderFloat3("Camera Rotation", &camera.transform.rotation[0], -PI, PI);
+
+    ImGui::SliderFloat3("Model Position", &quadLayout.transform.position[0], -2, 2);
+    ImGui::SliderFloat3("Model Rotation", &quadLayout.transform.rotation[0], -PI, PI);
+    ImGui::SliderFloat3("Model Scale", &quadLayout.transform.scale[0], -2, 2);
 
     if ((time - prevRenderTime) >= renderRate)
     {
-      projection = glm::perspective(glm::radians(45.f), sScreenSize.x / sScreenSize.y, 0.001f, 1000.f);
-      view = glm::lookAt(cameraPosition, { 0.f, 0.f, 0.f }, { 0.f, 1.f, 0.f });
+      projection = (b8)camera.projection
+        ? glm::perspective(glm::radians(45.f), sScreenSize.x / sScreenSize.y, 0.001f, 1000.f)
+        : glm::ortho(-1.f, 1.f, -1.f, 1.f);
+      view = glm::identity<fm4>(); // glm::lookAt(cameraPosition, { 0.f, 0.f, 0.f }, { 0.f, 1.f, 0.f });
       model = glm::identity<fm4>();
+
+      camera.right = glm::normalize(glm::cross(camera.up, camera.forward));
+      camera.up = glm::cross(camera.forward, camera.right);
+
+      view *= glm::translate(view, camera.transform.position);
+      view *= glm::rotate(view, camera.transform.rotation.x, camera.right);
+      view *= glm::rotate(view, camera.transform.rotation.y, camera.up);
+      view *= glm::rotate(view, camera.transform.rotation.z, camera.forward);
+
+      model *= glm::translate(model, quadLayout.transform.position);
+      model *= glm::rotate(model, quadLayout.transform.rotation.x, { 1.f, 0.f, 0.f });
+      model *= glm::rotate(model, quadLayout.transform.rotation.y, { 0.f, 1.f, 0.f });
+      model *= glm::rotate(model, quadLayout.transform.rotation.z, { 0.f, 0.f, 1.f });
+      model *= glm::scale(model, quadLayout.transform.scale);
 
       glUniformMatrix4fv(uProjection, 1, 0, &projection[0][0]);
       glUniformMatrix4fv(uView, 1, 0, &view[0][0]);
@@ -448,6 +474,7 @@ s32 main()
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
     glfwSwapBuffers(pWindow);
+    glfwPollEvents();
 
     prevTime = time;
   }
