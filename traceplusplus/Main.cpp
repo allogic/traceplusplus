@@ -17,57 +17,82 @@ typedef unsigned char  u8;
 
 typedef int           s32;
 typedef unsigned int  u32;
-typedef float         f32;
 
-typedef glm::fvec2    fv2;
-typedef glm::fvec3    fv3;
+typedef float         r32;
+typedef double        r64;
 
-typedef glm::fmat4    fm4;
+typedef glm::fvec2    r32v2;
+typedef glm::fvec3    r32v3;
+typedef glm::fvec4    r32v4;
 
-constexpr f32 PI = glm::pi<f32>();
+typedef glm::fmat4    r32m4;
+
+struct TScreen
+{
+  r32v2 screenSize  = {};
+  r32   aspectRatio = 0.f;
+};
+
+struct TMouse
+{
+  u32   isMoving              = 0;
+  u32   invertX               = 0;
+  u32   invertY               = 0;
+  r32v2 position              = {};
+  r32v2 prevPosition          = {};
+  r32v2 positionDelta         = {};
+  r32v2 positionDeltaInverted = {};
+};
 
 struct TTransform
 {
-  fv3 position = {};
-  fv3 rotation = {};
-  fv3 scale    = { 1.f, 1.f, 1.f };
+  r32v3 position = {};
+  r32v3 rotation = {};
+  r32v3 scale    = { 1.f, 1.f, 1.f };
 };
 
 template<u32 Width, u32 Height, u32 AttrCount, u32 IndexCount>
 struct TVertexLayout
 {
-  constexpr static const u32 Width = Width;
-  constexpr static const u32 Height = Height;
+  constexpr static const u32 Width            = Width;
+  constexpr static const u32 Height           = Height;
 
-  constexpr static const u32 AttrCount = AttrCount;
-  constexpr static const u32 VertexCount = Width * Height;
-  constexpr static const u32 IndexCount = IndexCount;
+  constexpr static const u32 AttrCount        = AttrCount;
+  constexpr static const u32 VertexCount      = Width * Height;
+  constexpr static const u32 IndexCount       = IndexCount;
 
-  constexpr static const u32 VertexLocation = 0;
-  constexpr static const u32 IndexLocation = 1;
+  constexpr static const u32 VertexLocation   = 0;
+  constexpr static const u32 IndexLocation    = 1;
+
+  u32                        vao              = 0;
+  u32                        pVbos[AttrCount] = { 0, 0 };
+  r32*                       pVertices        = nullptr;
+  u32*                       pIndices         = nullptr;
+  TTransform                 transform        = {};
 
   TVertexLayout()
   {
-    pVertices = (f32*)std::calloc(VertexCount, sizeof(f32*));
+    pVertices = (r32*)std::calloc(VertexCount, sizeof(r32));
     pIndices = (u32*)std::calloc(IndexCount, sizeof(u32));
   }
-
-  u32                        vao = 0;
-  u32                        pVbos[AttrCount] = { 0, 0 };
-  f32*                       pVertices = nullptr;
-  u32*                       pIndices = nullptr;
-  TTransform                 transform = {};
 };
 
 struct TCamera
 {
   enum class TProjection { Orthographic, Perspective };
 
-  TProjection projection = TProjection::Perspective;
-  TTransform  transform  = {};
-  fv3         up         = { 0.f, 1.f, 0.f };
-  fv3         right      = {};
-  fv3         forward    = { 0.f, 0.f, 1.f };
+  TProjection projection            = TProjection::Perspective;
+  TTransform  transform             = {};
+  r32v3       right                 = { 1.f, 0.f, 0.f };
+  r32v3       up                    = { 0.f, 1.f, 0.f };
+  r32v3       forward               = { 0.f, 0.f, 1.f };
+  r32v3       localRight            = right;
+  r32v3       localUp               = up;
+  r32v3       localForward          = forward;
+  r32         rotationDamping       = 0.2f;
+  r32         positionDamping       = 0.2f;
+  r32v2       rotationVelocity      = {};
+  r32v2       rotationVelocityDelta = {};
 };
 
 #include <string>
@@ -106,22 +131,22 @@ struct TCamera
 //    return 1;
 //  }
 //
-//  b8 OnUserUpdate(f32 elapsedTime) override
+//  b8 OnUserUpdate(r32 elapsedTime) override
 //  {
 //    Clear({ 0, 0, 0, 255 });
 //
-//    const fv2 screenSize = { ScreenWidth(), ScreenHeight() };
+//    const r32v2 screenSize = { ScreenWidth(), ScreenHeight() };
 //
-//    fv2 screenUvNorm;
-//    fv3 rayOrig;
-//    fv3 hitNormal;
+//    r32v2 screenUvNorm;
+//    r32v3 rayOrig;
+//    r32v3 hitNormal;
 //
 //    olc::Pixel color;
 //
 //    mCamera.Update();
 //
-//    for (f32 x = 0.f; x < screenSize.x; x++)
-//      for (f32 y = 0.f; y < screenSize.y; y++)
+//    for (r32 x = 0.f; x < screenSize.x; x++)
+//      for (r32 y = 0.f; y < screenSize.y; y++)
 //      {
 //        screenUvNorm = CCamera::NDC({ x, y }, screenSize);
 //        rayOrig = mCamera.ProjectToWorld(screenUvNorm);
@@ -140,7 +165,7 @@ struct TCamera
 //  }
 //
 //private:
-//  fv3 mCameraRotation{ 0, 0, 0 };
+//  r32v3 mCameraRotation{ 0, 0, 0 };
 //
 //  CCamera mCamera{ { 0, 0, -1 }, { 0, 0, 1 }, { 0, 1, 0 } };
 //
@@ -275,9 +300,9 @@ static s32 CreateBuffers(TVertexLayout<Width, Height, AttrCount, IndexCount>& la
     return 0;
 
   glBindBuffer(GL_ARRAY_BUFFER, layout.pVbos[T::VertexLocation]);
-  glBufferData(GL_ARRAY_BUFFER, T::VertexCount * sizeof(f32), layout.pVertices, GL_STATIC_DRAW);
+  glBufferData(GL_ARRAY_BUFFER, T::VertexCount * sizeof(r32), layout.pVertices, GL_STATIC_DRAW);
   glVertexAttribPointer(0, 3, GL_FLOAT, 0, 0, 0);
-  glVertexAttribPointer(1, 2, GL_FLOAT, 0, 3 * sizeof(f32), 0);
+  glVertexAttribPointer(1, 2, GL_FLOAT, 0, 3 * sizeof(r32), 0);
   glEnableVertexAttribArray(0);
   glEnableVertexAttribArray(1);
   glBindBuffer(0, 0);
@@ -291,8 +316,9 @@ static s32 CreateBuffers(TVertexLayout<Width, Height, AttrCount, IndexCount>& la
   return 1;
 }
 
-static s32 sStatus = 1;
-static fv2 sScreenSize = { 1280, 720 };
+static s32     sStatus = 1;
+static TScreen sScreen = { { 1280.f, 720.f } };
+static TMouse  sMouse  = { 0, 0, 0, sScreen.screenSize / 2.f };
 
 s32 main()
 {
@@ -307,14 +333,25 @@ s32 main()
 
   GLFWwindow* pWindow = nullptr;
 
-  if (pWindow = glfwCreateWindow((s32)sScreenSize.x, (s32)sScreenSize.y, "Tracer", nullptr, nullptr), !pWindow)
+  if (pWindow = glfwCreateWindow((s32)sScreen.screenSize.x, (s32)sScreen.screenSize.y, "Tracer", nullptr, nullptr), !pWindow)
     return FAILED_GLFW_WINDOW;
 
   glfwMakeContextCurrent(pWindow);
 
   glfwSetWindowCloseCallback(pWindow, [](GLFWwindow*) { sStatus = 0; });
-  glfwSetWindowSizeCallback(pWindow, [](GLFWwindow*, s32 width, s32 height) { sScreenSize = { width, height }; glViewport(0, 0, (s32)sScreenSize.x, (s32)sScreenSize.y); });
+  glfwSetWindowSizeCallback(pWindow, [](GLFWwindow*, s32 width, s32 height) {
+    sScreen.screenSize = { width, height };
+    sScreen.aspectRatio = sScreen.screenSize.x / sScreen.screenSize.y;
+    glViewport(0, 0, width, height);
+  });
+  glfwSetCursorPosCallback(pWindow, [](GLFWwindow*, r64 x, r64 y) {
+    sMouse.prevPosition = sMouse.position;
+    sMouse.position = { (r32)x, (r32)y };
+    sMouse.positionDelta = sMouse.position - sMouse.prevPosition;
+    sMouse.isMoving = 1;
+  });
 
+  //glfwSetInputMode(pWindow, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
   glfwSwapInterval(1);
 
   if (!gladLoadGL())
@@ -390,31 +427,34 @@ s32 main()
   if (uModel = glGetUniformLocation(shader, "uModel"); uModel < 0)
     return FAILED_SHADER_UNIFORM;
 
-  f32 time = 0.f;
-  f32 prevTime = 0.f;
-  f32 deltaTime = 0.f;
+  r32 time = 0.f;
+  r32 prevTime = 0.f;
+  r32 deltaTime = 0.f;
 
   s32 fps = 60;
-  f32 renderRate = 1.f / fps;
-  f32 prevRenderTime = 0.f;
+  r32 renderRate = 1.f / fps;
+  r32 prevRenderTime = 0.f;
 
   TCamera camera;
 
-  fm4 projection;
-  fm4 view;
-  fm4 model;
+  r32m4 projection = glm::identity<r32m4>();
+  r32m4 view = glm::identity<r32m4>();
+  r32m4 model = glm::identity<r32m4>();
 
   while (sStatus > 0)
   {
-    time = (f32)glfwGetTime();
+    time = (r32)glfwGetTime();
     deltaTime = time - prevTime;
     renderRate = 1.f / fps;
 
+    if (glfwGetKey(pWindow, GLFW_KEY_W) == GLFW_PRESS) camera.transform.position += camera.localForward * camera.positionDamping * time;
+    if (glfwGetKey(pWindow, GLFW_KEY_S) == GLFW_PRESS) camera.transform.position -= camera.localForward * camera.positionDamping * time;
+    if (glfwGetKey(pWindow, GLFW_KEY_A) == GLFW_PRESS) camera.transform.position -= camera.localRight * camera.positionDamping * time;
+    if (glfwGetKey(pWindow, GLFW_KEY_D) == GLFW_PRESS) camera.transform.position += camera.localRight * camera.positionDamping * time;
+
     glClearColor(0.f, 0.f, 0.f, 1.f);
     glClear(GL_COLOR_BUFFER_BIT);
-
     glUseProgram(shader);
-
     glBindVertexArray(quadLayout.vao);
 
     ImGui_ImplOpenGL3_NewFrame();
@@ -423,32 +463,76 @@ s32 main()
     ImGui::NewFrame();
 
     ImGui::Begin("Debug");
-
     ImGui::SliderInt("Fps", &fps, 0, 120);
 
     ImGui::Checkbox("Enable perspective", (b8*)&camera.projection);
-    ImGui::SliderFloat3("Camera Position", &camera.transform.position[0], -2, 2);
-    ImGui::SliderFloat3("Camera Rotation", &camera.transform.rotation[0], -PI, PI);
 
-    ImGui::SliderFloat3("Model Position", &quadLayout.transform.position[0], -2, 2);
-    ImGui::SliderFloat3("Model Rotation", &quadLayout.transform.rotation[0], -PI, PI);
-    ImGui::SliderFloat3("Model Scale", &quadLayout.transform.scale[0], -2, 2);
+    ImGui::SliderFloat3("Model Position", &quadLayout.transform.position[0], -1000, 1000);
+    ImGui::SliderFloat3("Model Rotation", &quadLayout.transform.rotation[0], -180, 180);
+    ImGui::SliderFloat3("Model Scale", &quadLayout.transform.scale[0], -1000, 1000);
+
+    ImGui::SliderFloat2("Mouse Position", &sMouse.position[0], 0.f, 1000.f);
+    ImGui::SliderFloat2("Mouse Previous Position", &sMouse.prevPosition[0], 0.f, 1000.f);
+    ImGui::SliderFloat2("Mouse Position Delta", &sMouse.positionDelta[0], -100.f, 100.f);
+
+    ImGui::SliderFloat3("Camera Position", &camera.transform.position[0], -1000, 1000);
+    ImGui::SliderFloat3("Camera Rotation", &camera.transform.rotation[0], -180, 180);
+    ImGui::SliderFloat2("Camera Rotation Velocity", &camera.rotationVelocity[0], -100.f, 100.f);
+    ImGui::SliderFloat2("Camera Rotation Velocity Delta", &camera.rotationVelocityDelta[0], -10.f, 10.f);
+    ImGui::SliderFloat3("Camera Local Right", &camera.localRight[0], -1.f, 1.f);
+    ImGui::SliderFloat3("Camera Local Up", &camera.localUp[0], -1.f, 1.f);
+    ImGui::SliderFloat3("Camera Local Forward", &camera.localForward[0], -1.f, 1.f);
+    
+    if (sMouse.isMoving)
+    {
+      sMouse.positionDeltaInverted.x = sMouse.invertX ? -sMouse.positionDelta.x : sMouse.positionDelta.x;
+      sMouse.positionDeltaInverted.y = sMouse.invertY ? -sMouse.positionDelta.y : sMouse.positionDelta.y;
+
+      // TODO: handle negative values
+
+      camera.rotationVelocityDelta.x += sMouse.positionDeltaInverted.x * camera.rotationDamping * time; // aspect
+      camera.rotationVelocityDelta.y += sMouse.positionDeltaInverted.y * camera.rotationDamping * time;
+    }
+
+    //if (glm::abs(camera.rotationVelocity.x) > 0.f || glm::abs(camera.rotationVelocity.y) > 0.f)
+    //{
+    //  
+    //}
+
+    if (camera.rotationVelocityDelta.x > 0.f) camera.rotationVelocityDelta.x -= camera.rotationDamping * time; // aspect
+    if (camera.rotationVelocityDelta.y > 0.f) camera.rotationVelocityDelta.y -= camera.rotationDamping * time;
+
+    camera.rotationVelocity += camera.rotationVelocityDelta;
+
+    if (camera.rotationVelocity.x > 180.f) camera.rotationVelocity.x = -180.f;
+    if (camera.rotationVelocity.x < -180.f) camera.rotationVelocity.x = 180.f;
+
+    if (camera.rotationVelocity.y > 180.f) camera.rotationVelocity.y = -180.f;
+    if (camera.rotationVelocity.y < -180.f) camera.rotationVelocity.y = 180.f;
+
+    //camera.rotationTensor = glm::rotate(camera.rotationTensor, camera.rotationVelocity.x, { 1.f, 0.f, 0.f });
+    //rotation = glm::rotate(rotation, camera.rotationVelocity.y, { 0.f, 1.f, 0.f });
+
+    r32v3 forward;
+    forward.x = glm::cos(glm::radians(camera.rotationVelocity.x) * glm::cos(glm::radians(camera.rotationVelocity.y)));
+    forward.y = glm::sin(glm::radians(camera.rotationVelocity.y));
+    forward.z = glm::sin(glm::radians(camera.rotationVelocity.x) * glm::cos(glm::radians(camera.rotationVelocity.y)));
+
+    camera.localForward = glm::normalize(forward);
+    //camera.localUp = ;
+    //camea.localRight = ;
+
+    //camera.localRight = r32v4{ camera.localRight, 1.f } * camera.rotationTensor;
+    //camera.localUp = r32v4{ camera.localUp, 1.f } * camera.rotationTensor;
+    //camera.localForward = r32v4{ camera.localForward, 1.f } * camera.rotationTensor;
 
     if ((time - prevRenderTime) >= renderRate)
     {
       projection = (b8)camera.projection
-        ? glm::perspective(glm::radians(45.f), sScreenSize.x / sScreenSize.y, 0.001f, 1000.f)
+        ? glm::perspective(glm::radians(45.f), sScreen.aspectRatio, 0.001f, 1000.f)
         : glm::ortho(-1.f, 1.f, -1.f, 1.f);
-      view = glm::identity<fm4>(); // glm::lookAt(cameraPosition, { 0.f, 0.f, 0.f }, { 0.f, 1.f, 0.f });
-      model = glm::identity<fm4>();
-
-      camera.right = glm::normalize(glm::cross(camera.up, camera.forward));
-      camera.up = glm::cross(camera.forward, camera.right);
-
-      view *= glm::translate(view, camera.transform.position);
-      view *= glm::rotate(view, camera.transform.rotation.x, camera.right);
-      view *= glm::rotate(view, camera.transform.rotation.y, camera.up);
-      view *= glm::rotate(view, camera.transform.rotation.z, camera.forward);
+      view = glm::lookAt(camera.transform.position, camera.transform.position + camera.localForward, camera.localUp);
+      model = glm::identity<r32m4>();
 
       model *= glm::translate(model, quadLayout.transform.position);
       model *= glm::rotate(model, quadLayout.transform.rotation.x, { 1.f, 0.f, 0.f });
@@ -465,10 +549,11 @@ s32 main()
       prevRenderTime = time;
     }
 
+    sMouse.isMoving = 0;
+    sMouse.positionDelta = { 0.f, 0.f };
+
     ImGui::End();
-
     ImGui::EndFrame();
-
     ImGui::Render();
 
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
