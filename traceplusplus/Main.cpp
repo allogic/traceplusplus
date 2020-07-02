@@ -35,13 +35,17 @@ struct TScreen
 
 struct TMouse
 {
-  u32   isMoving              = 0;
-  u32   invertX               = 0;
-  u32   invertY               = 0;
-  r32v2 position              = {};
-  r32v2 prevPosition          = {};
-  r32v2 positionDelta         = {};
-  r32v2 positionDeltaInverted = {};
+  enum class TButtonState { Press, Hold, Release };
+
+  u32          button                = 0;
+  TButtonState state                 = TButtonState::Press;
+  u32          isMoving              = 0;
+  u32          invertX               = 0;
+  u32          invertY               = 0;
+  r32v2        position              = {};
+  r32v2        prevPosition          = {};
+  r32v2        positionDelta         = {};
+  r32v2        positionDeltaInverted = {};
 };
 
 struct TTransform
@@ -89,8 +93,8 @@ struct TCamera
   r32v3       localRight            = right;
   r32v3       localUp               = up;
   r32v3       localForward          = forward;
-  r32         rotationDamping       = 0.2f;
   r32         positionDamping       = 0.2f;
+  r32         rotationDamping       = 0.2f;
   r32v2       rotationVelocity      = {};
   r32v2       rotationVelocityDelta = {};
 };
@@ -98,7 +102,7 @@ struct TCamera
 #include <string>
 
 #define GL_MAJOR 4
-#define GL_MINOR 0
+#define GL_MINOR 6
 
 #define _STR(V) #V
 #define STR(V) _STR(V)
@@ -318,7 +322,7 @@ static s32 CreateBuffers(TVertexLayout<Width, Height, AttrCount, IndexCount>& la
 
 static s32     sStatus = 1;
 static TScreen sScreen = { { 1280.f, 720.f } };
-static TMouse  sMouse  = { 0, 0, 0, sScreen.screenSize / 2.f };
+static TMouse  sMouse  = { 0, TMouse::TButtonState::Press, 0, 0, 0, sScreen.screenSize / 2.f };
 
 s32 main()
 {
@@ -350,7 +354,9 @@ s32 main()
     sMouse.positionDelta = sMouse.position - sMouse.prevPosition;
     sMouse.isMoving = 1;
   });
-
+  glfwSetMouseButtonCallback(pWindow, [](GLFWwindow*, s32 button, s32 action, s32 mods) {
+    sMouse.button = button;
+  });
   //glfwSetInputMode(pWindow, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
   glfwSwapInterval(1);
 
@@ -485,13 +491,12 @@ s32 main()
     
     if (sMouse.isMoving)
     {
-      sMouse.positionDeltaInverted.x = sMouse.invertX ? -sMouse.positionDelta.x : sMouse.positionDelta.x;
+      sMouse.positionDeltaInverted.x = sMouse.invertX ? -sMouse.positionDelta.x : sMouse.positionDelta.x; // aspect
       sMouse.positionDeltaInverted.y = sMouse.invertY ? -sMouse.positionDelta.y : sMouse.positionDelta.y;
 
       // TODO: handle negative values
 
-      camera.rotationVelocityDelta.x += sMouse.positionDeltaInverted.x * camera.rotationDamping * time; // aspect
-      camera.rotationVelocityDelta.y += sMouse.positionDeltaInverted.y * camera.rotationDamping * time;
+      camera.rotationVelocityDelta += sMouse.positionDeltaInverted * camera.rotationDamping * time;
     }
 
     //if (glm::abs(camera.rotationVelocity.x) > 0.f || glm::abs(camera.rotationVelocity.y) > 0.f)
@@ -499,7 +504,9 @@ s32 main()
     //  
     //}
 
-    if (camera.rotationVelocityDelta.x > 0.f) camera.rotationVelocityDelta.x -= camera.rotationDamping * time; // aspect
+    // define deadzone
+
+    if (camera.rotationVelocityDelta.x > 0.f) camera.rotationVelocityDelta.x -= camera.rotationDamping * time;
     if (camera.rotationVelocityDelta.y > 0.f) camera.rotationVelocityDelta.y -= camera.rotationDamping * time;
 
     camera.rotationVelocity += camera.rotationVelocityDelta;
