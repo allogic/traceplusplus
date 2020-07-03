@@ -35,17 +35,16 @@ struct TScreen
 
 struct TMouse
 {
-  enum class TButtonState { Press, Hold, Release };
+  enum class TButton      : u32 { Left, Right, Middle };
+  enum class TButtonState : u32 { Press, Hold, Release };
 
-  u32          button                = 0;
+  TButton      button                = TButton::Left;
   TButtonState state                 = TButtonState::Press;
   u32          isMoving              = 0;
-  u32          invertX               = 0;
-  u32          invertY               = 0;
+  b8           invertX               = 0;
+  b8           invertY               = 0;
   r32v2        position              = {};
-  r32v2        prevPosition          = {};
-  r32v2        positionDelta         = {};
-  r32v2        positionDeltaInverted = {};
+  r32v2        positionPrevious      = {};
 };
 
 struct TTransform
@@ -53,6 +52,7 @@ struct TTransform
   r32v3 position = {};
   r32v3 rotation = {};
   r32v3 scale    = { 1.f, 1.f, 1.f };
+  r32m4 tensor   = {}; // TODO: eval
 };
 
 template<u32 Width, u32 Height, u32 AttrCount, u32 IndexCount>
@@ -83,20 +83,23 @@ struct TVertexLayout
 
 struct TCamera
 {
-  enum class TProjection { Orthographic, Perspective };
+  enum class TProjection : b8 { Orthographic, Perspective };
 
   TProjection projection            = TProjection::Perspective;
   TTransform  transform             = {};
+  TTransform  transformLocal        = {};
   r32v3       right                 = { 1.f, 0.f, 0.f };
   r32v3       up                    = { 0.f, 1.f, 0.f };
   r32v3       forward               = { 0.f, 0.f, 1.f };
   r32v3       localRight            = right;
   r32v3       localUp               = up;
   r32v3       localForward          = forward;
-  r32         positionDamping       = 0.2f;
-  r32         rotationDamping       = 0.2f;
+  r32         positionSpeed         = 5.0f;
+  r32         rotationSpeed         = 5.0f;
+  r32v2       rotationDrag          = {};
+  r32         rotationDecay         = 2.0f;
+  r32         rotationDeadzone      = 0.2f;
   r32v2       rotationVelocity      = {};
-  r32v2       rotationVelocityDelta = {};
 };
 
 #include <string>
@@ -322,7 +325,7 @@ static s32 CreateBuffers(TVertexLayout<Width, Height, AttrCount, IndexCount>& la
 
 static s32     sStatus = 1;
 static TScreen sScreen = { { 1280.f, 720.f } };
-static TMouse  sMouse  = { 0, TMouse::TButtonState::Press, 0, 0, 0, sScreen.screenSize / 2.f };
+static TMouse  sMouse  = { TMouse::TButton::Left, TMouse::TButtonState::Press, 0, 1, 0, sScreen.screenSize / 2.f };
 
 s32 main()
 {
@@ -349,13 +352,13 @@ s32 main()
     glViewport(0, 0, width, height);
   });
   glfwSetCursorPosCallback(pWindow, [](GLFWwindow*, r64 x, r64 y) {
-    sMouse.prevPosition = sMouse.position;
+    sMouse.positionPrevious = sMouse.position;
     sMouse.position = { (r32)x, (r32)y };
-    sMouse.positionDelta = sMouse.position - sMouse.prevPosition;
     sMouse.isMoving = 1;
   });
   glfwSetMouseButtonCallback(pWindow, [](GLFWwindow*, s32 button, s32 action, s32 mods) {
-    sMouse.button = button;
+    sMouse.button = (TMouse::TButton)button;
+    sMouse.state = (TMouse::TButtonState)action;
   });
   //glfwSetInputMode(pWindow, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
   glfwSwapInterval(1);
@@ -453,10 +456,10 @@ s32 main()
     deltaTime = time - prevTime;
     renderRate = 1.f / fps;
 
-    if (glfwGetKey(pWindow, GLFW_KEY_W) == GLFW_PRESS) camera.transform.position += camera.localForward * camera.positionDamping * time;
-    if (glfwGetKey(pWindow, GLFW_KEY_S) == GLFW_PRESS) camera.transform.position -= camera.localForward * camera.positionDamping * time;
-    if (glfwGetKey(pWindow, GLFW_KEY_A) == GLFW_PRESS) camera.transform.position -= camera.localRight * camera.positionDamping * time;
-    if (glfwGetKey(pWindow, GLFW_KEY_D) == GLFW_PRESS) camera.transform.position += camera.localRight * camera.positionDamping * time;
+    if (glfwGetKey(pWindow, GLFW_KEY_W) == GLFW_PRESS) camera.transform.position += camera.localForward * camera.positionSpeed * deltaTime;
+    if (glfwGetKey(pWindow, GLFW_KEY_S) == GLFW_PRESS) camera.transform.position -= camera.localForward * camera.positionSpeed * deltaTime;
+    if (glfwGetKey(pWindow, GLFW_KEY_A) == GLFW_PRESS) camera.transform.position -= camera.localRight * camera.positionSpeed * deltaTime;
+    if (glfwGetKey(pWindow, GLFW_KEY_D) == GLFW_PRESS) camera.transform.position += camera.localRight * camera.positionSpeed * deltaTime;
 
     glClearColor(0.f, 0.f, 0.f, 1.f);
     glClear(GL_COLOR_BUFFER_BIT);
@@ -471,45 +474,57 @@ s32 main()
     ImGui::Begin("Debug");
     ImGui::SliderInt("Fps", &fps, 0, 120);
 
-    ImGui::Checkbox("Enable perspective", (b8*)&camera.projection);
+    ImGui::Begin("Mouse");
+    ImGui::LabelText("Button", "%d", sMouse.button);
+    ImGui::LabelText("State", "%d", sMouse.state);
+    ImGui::LabelText("Is Moving", "%d", sMouse.isMoving);
+    ImGui::Checkbox("Invert X", &sMouse.invertX);
+    ImGui::Checkbox("Invert Y", &sMouse.invertY);
+    ImGui::LabelText("Position", "{%3.3f, %3.3f}", sMouse.position.x, sMouse.position.y);
+    ImGui::LabelText("Position Previous", "{%3.3f, %3.3f}", sMouse.positionPrevious.x, sMouse.positionPrevious.y);
+    ImGui::End();
 
-    ImGui::SliderFloat3("Model Position", &quadLayout.transform.position[0], -1000, 1000);
-    ImGui::SliderFloat3("Model Rotation", &quadLayout.transform.rotation[0], -180, 180);
-    ImGui::SliderFloat3("Model Scale", &quadLayout.transform.scale[0], -1000, 1000);
+    ImGui::Begin("Camera");
+    ImGui::Checkbox("Projection", (b8*)(&camera.projection));
+    ImGui::SliderFloat3("Position", &camera.transform.position[0], -100.f, 100.f);
+    ImGui::SliderFloat3("Rotation", &camera.transform.rotation[0], -180.f, 180.f);
+    ImGui::SliderFloat3("Scale", &camera.transform.scale[0], -100.f, 100.f);
+    ImGui::LabelText("Right", "{%3.3f, %3.3f, %3.3f}", camera.right.x, camera.right.y, camera.right.z);
+    ImGui::LabelText("Up", "{%3.3f, %3.3f, %3.3f}", camera.up.x, camera.up.y, camera.up.z);
+    ImGui::LabelText("Forward", "{%3.3f, %3.3f, %3.3f}", camera.forward.x, camera.forward.y, camera.forward.z);
+    ImGui::LabelText("Local Right", "{%3.3f, %3.3f, %3.3f}", camera.localRight.x, camera.localRight.y, camera.localRight.z);
+    ImGui::LabelText("Local Up", "{%3.3f, %3.3f, %3.3f}", camera.localUp.x, camera.localUp.y, camera.localUp.z);
+    ImGui::LabelText("Local Forward", "{%3.3f, %3.3f, %3.3f}", camera.localForward.x, camera.localForward.y, camera.localForward.z);
+    ImGui::SliderFloat("Position Speed", &camera.positionSpeed, 0.f, 10.f);
+    ImGui::SliderFloat("Rotation Speed", &camera.rotationSpeed, 0.f, 10.f);
+    ImGui::LabelText("Rotation Drag", "{%3.3f, %3.3f}", camera.rotationDrag.x, camera.rotationDrag.y);
+    ImGui::SliderFloat("Rotation Decay", &camera.rotationDecay, 0.f, 10.f);
+    ImGui::SliderFloat("Rotation Deadzone", &camera.rotationDeadzone, 0.f, 1.f);
+    ImGui::SliderFloat2("Rotation Velocity", &camera.rotationVelocity[0], -100.f, 100.f);
+    ImGui::End();
 
-    ImGui::SliderFloat2("Mouse Position", &sMouse.position[0], 0.f, 1000.f);
-    ImGui::SliderFloat2("Mouse Previous Position", &sMouse.prevPosition[0], 0.f, 1000.f);
-    ImGui::SliderFloat2("Mouse Position Delta", &sMouse.positionDelta[0], -100.f, 100.f);
-
-    ImGui::SliderFloat3("Camera Position", &camera.transform.position[0], -1000, 1000);
-    ImGui::SliderFloat3("Camera Rotation", &camera.transform.rotation[0], -180, 180);
-    ImGui::SliderFloat2("Camera Rotation Velocity", &camera.rotationVelocity[0], -100.f, 100.f);
-    ImGui::SliderFloat2("Camera Rotation Velocity Delta", &camera.rotationVelocityDelta[0], -10.f, 10.f);
-    ImGui::SliderFloat3("Camera Local Right", &camera.localRight[0], -1.f, 1.f);
-    ImGui::SliderFloat3("Camera Local Up", &camera.localUp[0], -1.f, 1.f);
-    ImGui::SliderFloat3("Camera Local Forward", &camera.localForward[0], -1.f, 1.f);
+    ImGui::Begin("Model");
+    ImGui::SliderFloat3("Position", &quadLayout.transform.position[0], -100, 100);
+    ImGui::SliderFloat3("Rotation", &quadLayout.transform.rotation[0], -180, 180);
+    ImGui::SliderFloat3("Scale", &quadLayout.transform.scale[0], -100, 100);
+    ImGui::End();
     
-    if (sMouse.isMoving)
+    if (sMouse.isMoving && sMouse.button == TMouse::TButton::Right && sMouse.state == TMouse::TButtonState::Hold)
     {
-      sMouse.positionDeltaInverted.x = sMouse.invertX ? -sMouse.positionDelta.x : sMouse.positionDelta.x; // aspect
-      sMouse.positionDeltaInverted.y = sMouse.invertY ? -sMouse.positionDelta.y : sMouse.positionDelta.y;
+      r32v2 mouseDeltaPosition = sMouse.position - sMouse.positionPrevious;
 
-      // TODO: handle negative values
-
-      camera.rotationVelocityDelta += sMouse.positionDeltaInverted * camera.rotationDamping * time;
+      camera.rotationDrag.x = sMouse.invertX ? -mouseDeltaPosition.x : mouseDeltaPosition.x; // aspect
+      camera.rotationDrag.y = sMouse.invertY ? -mouseDeltaPosition.y : mouseDeltaPosition.y;
     }
+    else
+      camera.rotationDrag = { 0.f, 0.f };
 
-    //if (glm::abs(camera.rotationVelocity.x) > 0.f || glm::abs(camera.rotationVelocity.y) > 0.f)
-    //{
-    //  
-    //}
+    if (glm::length(camera.rotationVelocity) > camera.rotationDeadzone)
+      camera.rotationVelocity += -camera.rotationVelocity * camera.rotationDecay * deltaTime;
+    else
+      camera.rotationVelocity = { 0.f, 0.f };
 
-    // define deadzone
-
-    if (camera.rotationVelocityDelta.x > 0.f) camera.rotationVelocityDelta.x -= camera.rotationDamping * time;
-    if (camera.rotationVelocityDelta.y > 0.f) camera.rotationVelocityDelta.y -= camera.rotationDamping * time;
-
-    camera.rotationVelocity += camera.rotationVelocityDelta;
+    camera.rotationVelocity += camera.rotationDrag * camera.rotationSpeed * deltaTime;
 
     if (camera.rotationVelocity.x > 180.f) camera.rotationVelocity.x = -180.f;
     if (camera.rotationVelocity.x < -180.f) camera.rotationVelocity.x = 180.f;
@@ -517,8 +532,8 @@ s32 main()
     if (camera.rotationVelocity.y > 180.f) camera.rotationVelocity.y = -180.f;
     if (camera.rotationVelocity.y < -180.f) camera.rotationVelocity.y = 180.f;
 
-    //camera.rotationTensor = glm::rotate(camera.rotationTensor, camera.rotationVelocity.x, { 1.f, 0.f, 0.f });
-    //rotation = glm::rotate(rotation, camera.rotationVelocity.y, { 0.f, 1.f, 0.f });
+    // TODO: use transform tensor
+    // TODO: inline functions form matrix ops
 
     r32v3 forward;
     forward.x = glm::cos(glm::radians(camera.rotationVelocity.x) * glm::cos(glm::radians(camera.rotationVelocity.y)));
@@ -528,10 +543,6 @@ s32 main()
     camera.localForward = glm::normalize(forward);
     //camera.localUp = ;
     //camea.localRight = ;
-
-    //camera.localRight = r32v4{ camera.localRight, 1.f } * camera.rotationTensor;
-    //camera.localUp = r32v4{ camera.localUp, 1.f } * camera.rotationTensor;
-    //camera.localForward = r32v4{ camera.localForward, 1.f } * camera.rotationTensor;
 
     if ((time - prevRenderTime) >= renderRate)
     {
@@ -557,7 +568,6 @@ s32 main()
     }
 
     sMouse.isMoving = 0;
-    sMouse.positionDelta = { 0.f, 0.f };
 
     ImGui::End();
     ImGui::EndFrame();

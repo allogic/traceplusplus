@@ -447,7 +447,6 @@
     <ClInclude Include="include\imstb_textedit.h" />
     <ClInclude Include="include\imstb_truetype.h" />
     <ClInclude Include="include\KHR\khrplatform.h" />
-    <ClInclude Include="include\Tracer.h" />
     <ClInclude Include="Renderer.h" />
     <ClInclude Include="Scene.h" />
   </ItemGroup>
@@ -600,7 +599,6 @@
     <ClCompile Include="source\imgui_impl_glfw.cpp" />
     <ClCompile Include="source\imgui_impl_opengl3.cpp" />
     <ClCompile Include="source\imgui_widgets.cpp" />
-    <ClCompile Include="source\Tracer.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
