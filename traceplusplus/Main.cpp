@@ -52,32 +52,36 @@ struct TTransform
   r32v3 position = {};
   r32v3 rotation = {};
   r32v3 scale    = { 1.f, 1.f, 1.f };
-  r32m4 tensor   = {}; // TODO: eval
 };
 
-template<u32 Width, u32 Height, u32 AttrCount, u32 IndexCount>
 struct TVertexLayout
 {
-  constexpr static const u32 Width            = Width;
-  constexpr static const u32 Height           = Height;
+  u32          width            = 0;
+  u32          height           = 0;
 
-  constexpr static const u32 AttrCount        = AttrCount;
-  constexpr static const u32 VertexCount      = Width * Height;
-  constexpr static const u32 IndexCount       = IndexCount;
+  u32          vertexCount      = 0;
+  u32          indexCount       = 0;
 
-  constexpr static const u32 VertexLocation   = 0;
-  constexpr static const u32 IndexLocation    = 1;
+  u32          vertexLocation   = 0;
+  u32          indexLocation    = 1;
 
-  u32                        vao              = 0;
-  u32                        pVbos[AttrCount] = { 0, 0 };
-  r32*                       pVertices        = nullptr;
-  u32*                       pIndices         = nullptr;
-  TTransform                 transform        = {};
+  u32          vao              = 0;
+  u32          pVbos[2]         = { 0, 0 };
+  r32*         pVertices        = nullptr;
+  u32*         pIndices         = nullptr;
+  TTransform   transform        = {};
 
-  TVertexLayout()
+  TVertexLayout(u32 width, u32 height, u32 indexCount)
+    : width(width), height(height), vertexCount(width * height), indexCount(indexCount)
   {
-    pVertices = (r32*)std::calloc(VertexCount, sizeof(r32));
-    pIndices = (u32*)std::calloc(IndexCount, sizeof(u32));
+    pVertices = (r32*)std::calloc(vertexCount, sizeof(r32));
+    pIndices = (u32*)std::calloc(indexCount, sizeof(u32));
+  }
+
+  ~TVertexLayout()
+  {
+    delete[] pVertices;
+    delete[] pIndices;
   }
 };
 
@@ -87,7 +91,6 @@ struct TCamera
 
   TProjection projection            = TProjection::Perspective;
   TTransform  transform             = {};
-  TTransform  transformLocal        = {};
   r32v3       right                 = { 1.f, 0.f, 0.f };
   r32v3       up                    = { 0.f, 1.f, 0.f };
   r32v3       forward               = { 0.f, 0.f, 1.f };
@@ -100,6 +103,16 @@ struct TCamera
   r32         rotationDecay         = 2.0f;
   r32         rotationDeadzone      = 0.2f;
   r32v2       rotationVelocity      = {};
+
+  TCamera() = default;
+
+  r32m4 Projection(r32 aspect)
+  {
+    return (b8)projection
+      ? glm::perspective(glm::radians(45.f), aspect, 0.001f, 1000.f)
+      : glm::ortho(-1.f, 1.f, -1.f, 1.f);
+  }
+  r32m4 View() { return glm::lookAt(transform.position, localForward, localUp); }
 };
 
 #include <string>
@@ -289,11 +302,8 @@ static s32 CompileShaders(u32& program, const std::string& vertexSource, const s
   return 1;
 }
 
-template<u32 Width, u32 Height, u32 AttrCount, u32 IndexCount>
-static s32 CreateBuffers(TVertexLayout<Width, Height, AttrCount, IndexCount>& layout)
+static s32 CreateBuffers(TVertexLayout& layout)
 {
-  typedef TVertexLayout<Width, Height, AttrCount, IndexCount> T;
-
   glGenVertexArrays(1, &layout.vao);
 
   if (!layout.vao)
@@ -301,21 +311,21 @@ static s32 CreateBuffers(TVertexLayout<Width, Height, AttrCount, IndexCount>& la
 
   glBindVertexArray(layout.vao);
 
-  glGenBuffers(T::AttrCount, &layout.pVbos[0]);
+  glGenBuffers(2, &layout.pVbos[0]);
 
-  if (!layout.pVbos[T::VertexLocation] || !layout.pVbos[T::IndexLocation])
+  if (!layout.pVbos[0] || !layout.pVbos[1])
     return 0;
 
-  glBindBuffer(GL_ARRAY_BUFFER, layout.pVbos[T::VertexLocation]);
-  glBufferData(GL_ARRAY_BUFFER, T::VertexCount * sizeof(r32), layout.pVertices, GL_STATIC_DRAW);
+  glBindBuffer(GL_ARRAY_BUFFER, layout.pVbos[0]);
+  glBufferData(GL_ARRAY_BUFFER, layout.vertexCount * sizeof(r32), layout.pVertices, GL_STATIC_DRAW);
   glVertexAttribPointer(0, 3, GL_FLOAT, 0, 0, 0);
   glVertexAttribPointer(1, 2, GL_FLOAT, 0, 3 * sizeof(r32), 0);
   glEnableVertexAttribArray(0);
   glEnableVertexAttribArray(1);
   glBindBuffer(0, 0);
 
-  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, layout.pVbos[T::IndexLocation]);
-  glBufferData(GL_ELEMENT_ARRAY_BUFFER, T::IndexCount * sizeof(u32), layout.pIndices, GL_STATIC_DRAW);
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, layout.pVbos[1]);
+  glBufferData(GL_ELEMENT_ARRAY_BUFFER, layout.indexCount * sizeof(u32), layout.pIndices, GL_STATIC_DRAW);
   glBindBuffer(0, 0);
 
   glBindVertexArray(0);
@@ -324,7 +334,7 @@ static s32 CreateBuffers(TVertexLayout<Width, Height, AttrCount, IndexCount>& la
 }
 
 static s32     sStatus = 1;
-static TScreen sScreen = { { 1280.f, 720.f } };
+static TScreen sScreen = { { 1280.f, 720.f }, 1280.f / 720.f };
 static TMouse  sMouse  = { TMouse::TButton::Left, TMouse::TButtonState::Press, 0, 1, 0, sScreen.screenSize / 2.f };
 
 s32 main()
@@ -348,7 +358,7 @@ s32 main()
   glfwSetWindowCloseCallback(pWindow, [](GLFWwindow*) { sStatus = 0; });
   glfwSetWindowSizeCallback(pWindow, [](GLFWwindow*, s32 width, s32 height) {
     sScreen.screenSize = { width, height };
-    sScreen.aspectRatio = sScreen.screenSize.x / sScreen.screenSize.y;
+    sScreen.aspectRatio = (r32)width / height;
     glViewport(0, 0, width, height);
   });
   glfwSetCursorPosCallback(pWindow, [](GLFWwindow*, r64 x, r64 y) {
@@ -360,6 +370,7 @@ s32 main()
     sMouse.button = (TMouse::TButton)button;
     sMouse.state = (TMouse::TButtonState)action;
   });
+
   //glfwSetInputMode(pWindow, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
   glfwSwapInterval(1);
 
@@ -383,7 +394,9 @@ s32 main()
   if (!ImGui_ImplOpenGL3_Init(IMGUI_GL_VERSION))
     return FAILED_IMGUI_IMPL_GL;
 
-  TVertexLayout<4, 5, 2, 6> quadLayout;
+  TVertexLayout quadLayout(4, 5, 6);
+  quadLayout.transform.position = { 0.f, 0.f, 5.f };
+
   quadLayout.pVertices[0] = -1.f;
   quadLayout.pVertices[1] = -1.f;
   quadLayout.pVertices[2] = 0.f;
@@ -532,37 +545,39 @@ s32 main()
     if (camera.rotationVelocity.y > 180.f) camera.rotationVelocity.y = -180.f;
     if (camera.rotationVelocity.y < -180.f) camera.rotationVelocity.y = 180.f;
 
-    // TODO: use transform tensor
-    // TODO: inline functions form matrix ops
+    // TODO: inline functions for matrix ops
 
-    r32v3 forward;
-    forward.x = glm::cos(glm::radians(camera.rotationVelocity.x) * glm::cos(glm::radians(camera.rotationVelocity.y)));
-    forward.y = glm::sin(glm::radians(camera.rotationVelocity.y));
-    forward.z = glm::sin(glm::radians(camera.rotationVelocity.x) * glm::cos(glm::radians(camera.rotationVelocity.y)));
+    //r32v3 right;
+    //right.x = glm::cos(glm::radians(camera.rotationVelocity.x) * glm::cos(glm::radians(camera.rotationVelocity.y)));
+    //right.y = glm::sin(glm::radians(camera.rotationVelocity.y));
+    //right.z = glm::sin(glm::radians(camera.rotationVelocity.x) * glm::cos(glm::radians(camera.rotationVelocity.y)));
+    //camera.localRight = glm::normalize(right);
 
-    camera.localForward = glm::normalize(forward);
-    //camera.localUp = ;
-    //camea.localRight = ;
+    //r32m4 localRotation = glm::identity<r32m4>();
+    //localRotation = glm::rotate(localRotation, glm::radians(camera.rotationVelocity.x), camera.localRight);
+    //localRotation = glm::rotate(localRotation, glm::radians(camera.rotationVelocity.y), camera.localUp);
+
+    //camera.localRight = r32v4{ camera.localRight, 1.f } * localRotation;
+    //camera.localUp = r32v4{ camera.localUp, 1.f } * localRotation;
+    //camera.localForward = r32v4{ camera.localForward, 1.f } * localRotation;
 
     if ((time - prevRenderTime) >= renderRate)
     {
-      projection = (b8)camera.projection
-        ? glm::perspective(glm::radians(45.f), sScreen.aspectRatio, 0.001f, 1000.f)
-        : glm::ortho(-1.f, 1.f, -1.f, 1.f);
-      view = glm::lookAt(camera.transform.position, camera.transform.position + camera.localForward, camera.localUp);
+      projection = camera.Projection(sScreen.aspectRatio);
+      view = camera.View();
       model = glm::identity<r32m4>();
 
-      model *= glm::translate(model, quadLayout.transform.position);
-      model *= glm::rotate(model, quadLayout.transform.rotation.x, { 1.f, 0.f, 0.f });
-      model *= glm::rotate(model, quadLayout.transform.rotation.y, { 0.f, 1.f, 0.f });
-      model *= glm::rotate(model, quadLayout.transform.rotation.z, { 0.f, 0.f, 1.f });
-      model *= glm::scale(model, quadLayout.transform.scale);
+      model = glm::translate(model, quadLayout.transform.position);
+      model = glm::rotate(model, quadLayout.transform.rotation.x, { 1.f, 0.f, 0.f });
+      model = glm::rotate(model, quadLayout.transform.rotation.y, { 0.f, 1.f, 0.f });
+      model = glm::rotate(model, quadLayout.transform.rotation.z, { 0.f, 0.f, 1.f });
+      model = glm::scale(model, quadLayout.transform.scale);
 
       glUniformMatrix4fv(uProjection, 1, 0, &projection[0][0]);
       glUniformMatrix4fv(uView, 1, 0, &view[0][0]);
       glUniformMatrix4fv(uModel, 1, 0, &model[0][0]);
 
-      glDrawElements(GL_TRIANGLES, quadLayout.IndexCount, GL_UNSIGNED_INT, 0);
+      glDrawElements(GL_TRIANGLES, quadLayout.indexCount, GL_UNSIGNED_INT, 0);
 
       prevRenderTime = time;
     }
