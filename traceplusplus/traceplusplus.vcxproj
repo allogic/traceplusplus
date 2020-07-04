@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
@@ -587,7 +587,6 @@
     <None Include="include\glm\gtx\vector_angle.inl" />
     <None Include="include\glm\gtx\vector_query.inl" />
     <None Include="include\glm\gtx\wrap.inl" />
-    <None Include="shaders\Tracer.glsl" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="include\glm\detail\glm.cpp" />

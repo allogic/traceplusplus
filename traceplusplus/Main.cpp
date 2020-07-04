@@ -10,6 +10,9 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/constants.hpp>
 
+#include <string>
+#include <vector>
+
 typedef bool           b8;
 
 typedef char           s8;
@@ -29,56 +32,79 @@ typedef glm::fmat4    r32m4;
 
 struct TScreen
 {
-  r32v2 screenSize  = {};
-  r32   aspectRatio = 0.f;
+  struct TInfo
+  {
+    r32v2 screenSize  = {};
+    r32   aspectRatio = 0.f;
+  };
+
+  TInfo info;
+
+  TScreen(const TInfo& info) : info(info) {};
+  virtual ~TScreen() = default;
 };
 
 struct TMouse
 {
-  enum class TButton      : u32 { Left, Right, Middle };
-  enum class TButtonState : u32 { Press, Hold, Release };
+  enum class TButton      : s32 { None = -1, Left, Right, Middle };
+  enum class TButtonState : s32 { None = -1, Release, Press, Hold };
 
-  TButton      button                = TButton::Left;
-  TButtonState state                 = TButtonState::Press;
-  u32          isMoving              = 0;
-  b8           invertX               = 0;
-  b8           invertY               = 0;
-  r32v2        position              = {};
-  r32v2        positionPrevious      = {};
+  struct TInfo
+  {
+    TMouse::TButton      button           = TMouse::TButton::None;
+    TMouse::TButtonState state            = TMouse::TButtonState::None;
+    u32                  isMoving         = 0;
+    b8                   invertX          = 0;
+    b8                   invertY          = 0;
+    r32v2                position         = {};
+    r32v2                deltaPosition    = {};
+    r32v2                positionRegister = {};
+    r32v2                positionPrevious = {};
+  };
+
+  TInfo info;
+
+  TMouse(const TInfo& info) : info(info) {}
+  virtual ~TMouse() = default;
 };
 
+// TODO: this is a component
 struct TTransform
 {
   r32v3 position = {};
   r32v3 rotation = {};
-  r32v3 scale    = { 1.f, 1.f, 1.f };
+  r32v3 scale    = {};
+
+  TTransform() = default;
+  virtual ~TTransform() = default;
 };
 
-struct TVertexLayout
+struct TVertexLayoutBuffer
 {
-  u32          width            = 0;
-  u32          height           = 0;
-
-  u32          vertexCount      = 0;
-  u32          indexCount       = 0;
-
-  u32          vertexLocation   = 0;
-  u32          indexLocation    = 1;
-
-  u32          vao              = 0;
-  u32          pVbos[2]         = { 0, 0 };
-  r32*         pVertices        = nullptr;
-  u32*         pIndices         = nullptr;
-  TTransform   transform        = {};
-
-  TVertexLayout(u32 width, u32 height, u32 indexCount)
-    : width(width), height(height), vertexCount(width * height), indexCount(indexCount)
+  struct TInfo
   {
-    pVertices = (r32*)std::calloc(vertexCount, sizeof(r32));
-    pIndices = (u32*)std::calloc(indexCount, sizeof(u32));
+    u32 width       = 0;
+    u32 height      = 0;
+    u32 vertexCount = 0;
+    u32 indexCount  = 0;
+    // TTransform   transform      = {}; mov TMesh component
+  };
+
+  const TInfo info           = {};
+  u32         vertexLocation = 0;
+  u32         indexLocation  = 1;
+  u32         vao            = 0;
+  u32         pVbos[2]       = { 0, 0 };
+  r32*        pVertices      = nullptr;
+  u32*        pIndices       = nullptr;
+
+  TVertexLayoutBuffer(const TInfo& info) : info(info)
+  {
+    pVertices = (r32*)std::calloc(info.vertexCount, sizeof(r32));
+    pIndices = (u32*)std::calloc(info.indexCount, sizeof(u32));
   }
 
-  ~TVertexLayout()
+  virtual ~TVertexLayoutBuffer()
   {
     delete[] pVertices;
     delete[] pIndices;
@@ -87,9 +113,9 @@ struct TVertexLayout
 
 struct TCamera
 {
-  enum class TProjection : b8 { Orthographic, Perspective };
+  enum class TProjection : s32 { None = -1, Orthographic, Perspective };
 
-  TProjection projection            = TProjection::Perspective;
+  TProjection projection            = TProjection::None;
   TTransform  transform             = {};
   r32v3       right                 = { 1.f, 0.f, 0.f };
   r32v3       up                    = { 0.f, 1.f, 0.f };
@@ -97,25 +123,44 @@ struct TCamera
   r32v3       localRight            = right;
   r32v3       localUp               = up;
   r32v3       localForward          = forward;
-  r32         positionSpeed         = 5.0f;
-  r32         rotationSpeed         = 5.0f;
+  r32         positionSpeed         = 7.0f;
+  r32         rotationSpeed         = 1.5f;
   r32v2       rotationDrag          = {};
-  r32         rotationDecay         = 2.0f;
-  r32         rotationDeadzone      = 0.2f;
+  r32         rotationDecay         = 15.0f;
+  r32         rotationDeadzone      = 0.001f;
   r32v2       rotationVelocity      = {};
 
   TCamera() = default;
+  virtual ~TCamera() = default;
 
   r32m4 Projection(r32 aspect)
   {
-    return (b8)projection
-      ? glm::perspective(glm::radians(45.f), aspect, 0.001f, 1000.f)
-      : glm::ortho(-1.f, 1.f, -1.f, 1.f);
+    switch (projection)
+    {
+    case TProjection::Perspective: return glm::perspective(glm::radians(45.f), aspect, 0.001f, 1000.f);
+    case TProjection::Orthographic: return glm::ortho(-1.f, 1.f, -1.f, 1.f);
+    case TProjection::None: return glm::identity<r32m4>();
+    }
   }
-  r32m4 View() { return glm::lookAt(transform.position, localForward, localUp); }
+  r32m4 View() { return glm::lookAt(transform.position, transform.position + localForward, localUp); }
 };
 
-#include <string>
+// TODO: actor component sys(ACS) impl sooooon!
+
+struct TActor
+{
+  TActor() = default;
+  virtual ~TActor() = default;
+};
+
+struct TWorld
+{
+  TCamera              camera  = {};
+  std::vector<TActor*> actors  = {};
+
+  TWorld() = default;
+  virtual ~TWorld() = default;
+};
 
 #define GL_MAJOR 4
 #define GL_MINOR 6
@@ -205,10 +250,12 @@ uniform mat4 uProjection;
 uniform mat4 uView;
 uniform mat4 uModel;
 
+out vec2 oUv;
 out vec2 oScreenSize;
 
 void main()
 {
+  oUv = lUv;
   oScreenSize = iScreenSize;
 
   gl_Position = uProjection * uView * uModel * vec4(lPosition, 1.);
@@ -216,7 +263,8 @@ void main()
 )glsl";
 
 constexpr static const s8 TraceFragmentSource[] = R"glsl(
-in vec2 iScreenSize;
+in vec2 oUv;
+in vec2 oScreenSize;
 
 out vec4 FragColor;
 
@@ -318,8 +366,8 @@ static s32 CreateBuffers(TVertexLayout& layout)
 
   glBindBuffer(GL_ARRAY_BUFFER, layout.pVbos[0]);
   glBufferData(GL_ARRAY_BUFFER, layout.vertexCount * sizeof(r32), layout.pVertices, GL_STATIC_DRAW);
-  glVertexAttribPointer(0, 3, GL_FLOAT, 0, 0, 0);
-  glVertexAttribPointer(1, 2, GL_FLOAT, 0, 3 * sizeof(r32), 0);
+  glVertexAttribPointer(0, 3, GL_FLOAT, 0, 3 * sizeof(r32), 0);
+  glVertexAttribPointer(1, 2, GL_FLOAT, 0, 2 * sizeof(r32), 0);
   glEnableVertexAttribArray(0);
   glEnableVertexAttribArray(1);
   glBindBuffer(0, 0);
@@ -355,23 +403,6 @@ s32 main()
 
   glfwMakeContextCurrent(pWindow);
 
-  glfwSetWindowCloseCallback(pWindow, [](GLFWwindow*) { sStatus = 0; });
-  glfwSetWindowSizeCallback(pWindow, [](GLFWwindow*, s32 width, s32 height) {
-    sScreen.screenSize = { width, height };
-    sScreen.aspectRatio = (r32)width / height;
-    glViewport(0, 0, width, height);
-  });
-  glfwSetCursorPosCallback(pWindow, [](GLFWwindow*, r64 x, r64 y) {
-    sMouse.positionPrevious = sMouse.position;
-    sMouse.position = { (r32)x, (r32)y };
-    sMouse.isMoving = 1;
-  });
-  glfwSetMouseButtonCallback(pWindow, [](GLFWwindow*, s32 button, s32 action, s32 mods) {
-    sMouse.button = (TMouse::TButton)button;
-    sMouse.state = (TMouse::TButtonState)action;
-  });
-
-  //glfwSetInputMode(pWindow, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
   glfwSwapInterval(1);
 
   if (!gladLoadGL())
@@ -394,32 +425,91 @@ s32 main()
   if (!ImGui_ImplOpenGL3_Init(IMGUI_GL_VERSION))
     return FAILED_IMGUI_IMPL_GL;
 
+  TWorld world;
+
+  glfwSetWindowUserPointer(pWindow, &world);
+
+  glfwSetWindowCloseCallback(pWindow, [](GLFWwindow* pWin) {
+    TWorld* pWorld = (TWorld*)glfwGetWindowUserPointer(pWin);
+    if (!pWorld) return;
+
+    sStatus = 0;
+    });
+  glfwSetWindowSizeCallback(pWindow, [](GLFWwindow* pWin, s32 width, s32 height) {
+    TWorld* pWorld = (TWorld*)glfwGetWindowUserPointer(pWin);
+    if (!pWorld) return;
+
+    sScreen.screenSize = { width, height };
+    sScreen.aspectRatio = (r32)width / height;
+    glViewport(0, 0, width, height);
+    });
+  glfwSetCursorPosCallback(pWindow, [](GLFWwindow* pWin, r64 x, r64 y) {
+    TWorld* pWorld = (TWorld*)glfwGetWindowUserPointer(pWin);
+    if (!pWorld) return;
+
+    sMouse.positionPrevious = sMouse.position;
+    sMouse.position = { (r32)x, (r32)y };
+    sMouse.isMoving = 1;
+    });
+  glfwSetMouseButtonCallback(pWindow, [](GLFWwindow* pWin, s32 button, s32 action, s32 mods) {
+    TWorld* pWorld = (TWorld*)glfwGetWindowUserPointer(pWin);
+    if (!pWorld) return;
+
+    sMouse.button = (TMouse::TButton)button;
+    sMouse.state = (TMouse::TButtonState)action;
+
+    if (sMouse.button == TMouse::TButton::Right)
+    {
+      switch (sMouse.state)
+      {
+      case TMouse::TButtonState::Press:
+        //glfwSetInputMode(pWin, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
+        sMouse.positionRegister = sMouse.position;
+        //sMouse.position = sScreen.screenSize / 2.f;
+        //sMouse.positionPrevious = sMouse.position;
+        break;
+      case TMouse::TButtonState::Hold:
+        sMouse.deltaPosition = sMouse.position - sMouse.positionPrevious;
+        pWorld->camera.rotationDrag.x = sMouse.invertX ? -sMouse.deltaPosition.x : sMouse.deltaPosition.x; // aspect
+        pWorld->camera.rotationDrag.y = sMouse.invertY ? -sMouse.deltaPosition.y : sMouse.deltaPosition.y;
+        break;
+      case TMouse::TButtonState::Release:
+        sMouse.position = sMouse.positionRegister;
+        //sMouse.positionPrevious = sMouse.position;
+        pWorld->camera.rotationDrag = { 0.f, 0.f };
+        //glfwSetInputMode(pWin, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+        break;
+      }
+    }
+    });
+
   TVertexLayout quadLayout(4, 5, 6);
   quadLayout.transform.position = { 0.f, 0.f, 5.f };
+  quadLayout.transform.scale = { 1.f, 1.f, 0.f };
 
-  quadLayout.pVertices[0] = -1.f;
-  quadLayout.pVertices[1] = -1.f;
+  quadLayout.pVertices[0] = -.5f;
+  quadLayout.pVertices[1] = -.5f;
   quadLayout.pVertices[2] = 0.f;
-  quadLayout.pVertices[3] = 0.f;
-  quadLayout.pVertices[4] = 0.f;
+  //quadLayout.pVertices[3] = 0.f;
+  //quadLayout.pVertices[4] = 0.f;
 
-  quadLayout.pVertices[5] = 1.f;
-  quadLayout.pVertices[6] = -1.f;
+  quadLayout.pVertices[5] = .5f;
+  quadLayout.pVertices[6] = -.5f;
   quadLayout.pVertices[7] = 0.f;
-  quadLayout.pVertices[8] = 1.f;
-  quadLayout.pVertices[9] = 0.f;
+  //quadLayout.pVertices[8] = 1.f;
+  //quadLayout.pVertices[9] = 0.f;
 
-  quadLayout.pVertices[10] = -1.f;
-  quadLayout.pVertices[11] = 1.f;
+  quadLayout.pVertices[10] = -.5f;
+  quadLayout.pVertices[11] = .5f;
   quadLayout.pVertices[12] = 0.f;
-  quadLayout.pVertices[13] = 0.f;
-  quadLayout.pVertices[14] = 1.f;
+  //quadLayout.pVertices[13] = 0.f;
+  //quadLayout.pVertices[14] = 1.f;
 
-  quadLayout.pVertices[15] = 1.f;
-  quadLayout.pVertices[16] = 1.f;
+  quadLayout.pVertices[15] = .5f;
+  quadLayout.pVertices[16] = .5f;
   quadLayout.pVertices[17] = 0.f;
-  quadLayout.pVertices[18] = 1.f;
-  quadLayout.pVertices[19] = 1.f;
+  //quadLayout.pVertices[18] = 1.f;
+  //quadLayout.pVertices[19] = 1.f;
 
   quadLayout.pIndices[0] = 3;
   quadLayout.pIndices[1] = 1;
@@ -453,11 +543,9 @@ s32 main()
   r32 prevTime = 0.f;
   r32 deltaTime = 0.f;
 
-  s32 fps = 60;
+  s32 fps = 80;
   r32 renderRate = 1.f / fps;
   r32 prevRenderTime = 0.f;
-
-  TCamera camera;
 
   r32m4 projection = glm::identity<r32m4>();
   r32m4 view = glm::identity<r32m4>();
@@ -469,10 +557,10 @@ s32 main()
     deltaTime = time - prevTime;
     renderRate = 1.f / fps;
 
-    if (glfwGetKey(pWindow, GLFW_KEY_W) == GLFW_PRESS) camera.transform.position += camera.localForward * camera.positionSpeed * deltaTime;
-    if (glfwGetKey(pWindow, GLFW_KEY_S) == GLFW_PRESS) camera.transform.position -= camera.localForward * camera.positionSpeed * deltaTime;
-    if (glfwGetKey(pWindow, GLFW_KEY_A) == GLFW_PRESS) camera.transform.position -= camera.localRight * camera.positionSpeed * deltaTime;
-    if (glfwGetKey(pWindow, GLFW_KEY_D) == GLFW_PRESS) camera.transform.position += camera.localRight * camera.positionSpeed * deltaTime;
+    if (glfwGetKey(pWindow, GLFW_KEY_W) == GLFW_PRESS) world.camera.transform.position += world.camera.localForward * world.camera.positionSpeed * deltaTime;
+    if (glfwGetKey(pWindow, GLFW_KEY_S) == GLFW_PRESS) world.camera.transform.position -= world.camera.localForward * world.camera.positionSpeed * deltaTime;
+    if (glfwGetKey(pWindow, GLFW_KEY_A) == GLFW_PRESS) world.camera.transform.position += world.camera.localRight * world.camera.positionSpeed * deltaTime;
+    if (glfwGetKey(pWindow, GLFW_KEY_D) == GLFW_PRESS) world.camera.transform.position -= world.camera.localRight * world.camera.positionSpeed * deltaTime;
 
     glClearColor(0.f, 0.f, 0.f, 1.f);
     glClear(GL_COLOR_BUFFER_BIT);
@@ -498,74 +586,58 @@ s32 main()
     ImGui::End();
 
     ImGui::Begin("Camera");
-    ImGui::Checkbox("Projection", (b8*)(&camera.projection));
-    ImGui::SliderFloat3("Position", &camera.transform.position[0], -100.f, 100.f);
-    ImGui::SliderFloat3("Rotation", &camera.transform.rotation[0], -180.f, 180.f);
-    ImGui::SliderFloat3("Scale", &camera.transform.scale[0], -100.f, 100.f);
-    ImGui::LabelText("Right", "{%3.3f, %3.3f, %3.3f}", camera.right.x, camera.right.y, camera.right.z);
-    ImGui::LabelText("Up", "{%3.3f, %3.3f, %3.3f}", camera.up.x, camera.up.y, camera.up.z);
-    ImGui::LabelText("Forward", "{%3.3f, %3.3f, %3.3f}", camera.forward.x, camera.forward.y, camera.forward.z);
-    ImGui::LabelText("Local Right", "{%3.3f, %3.3f, %3.3f}", camera.localRight.x, camera.localRight.y, camera.localRight.z);
-    ImGui::LabelText("Local Up", "{%3.3f, %3.3f, %3.3f}", camera.localUp.x, camera.localUp.y, camera.localUp.z);
-    ImGui::LabelText("Local Forward", "{%3.3f, %3.3f, %3.3f}", camera.localForward.x, camera.localForward.y, camera.localForward.z);
-    ImGui::SliderFloat("Position Speed", &camera.positionSpeed, 0.f, 10.f);
-    ImGui::SliderFloat("Rotation Speed", &camera.rotationSpeed, 0.f, 10.f);
-    ImGui::LabelText("Rotation Drag", "{%3.3f, %3.3f}", camera.rotationDrag.x, camera.rotationDrag.y);
-    ImGui::SliderFloat("Rotation Decay", &camera.rotationDecay, 0.f, 10.f);
-    ImGui::SliderFloat("Rotation Deadzone", &camera.rotationDeadzone, 0.f, 1.f);
-    ImGui::SliderFloat2("Rotation Velocity", &camera.rotationVelocity[0], -100.f, 100.f);
+    ImGui::Checkbox("Projection", (b8*)(&world.camera.projection));
+    ImGui::SliderFloat3("Position", &world.camera.transform.position[0], -100.f, 100.f);
+    ImGui::SliderFloat3("Rotation", &world.camera.transform.rotation[0], -180.f, 180.f);
+    ImGui::SliderFloat3("Scale", &world.camera.transform.scale[0], -100.f, 100.f);
+    ImGui::LabelText("Right", "{%3.3f, %3.3f, %3.3f}", world.camera.right.x, world.camera.right.y, world.camera.right.z);
+    ImGui::LabelText("Up", "{%3.3f, %3.3f, %3.3f}", world.camera.up.x, world.camera.up.y, world.camera.up.z);
+    ImGui::LabelText("Forward", "{%3.3f, %3.3f, %3.3f}", world.camera.forward.x, world.camera.forward.y, world.camera.forward.z);
+    ImGui::LabelText("Local Right", "{%3.3f, %3.3f, %3.3f}", world.camera.localRight.x, world.camera.localRight.y, world.camera.localRight.z);
+    ImGui::LabelText("Local Up", "{%3.3f, %3.3f, %3.3f}", world.camera.localUp.x, world.camera.localUp.y, world.camera.localUp.z);
+    ImGui::LabelText("Local Forward", "{%3.3f, %3.3f, %3.3f}", world.camera.localForward.x, world.camera.localForward.y, world.camera.localForward.z);
+    ImGui::SliderFloat("Position Speed", &world.camera.positionSpeed, 0.f, 10.f);
+    ImGui::SliderFloat("Rotation Speed", &world.camera.rotationSpeed, 0.f, 10.f);
+    ImGui::LabelText("Rotation Drag", "{%3.3f, %3.3f}", world.camera.rotationDrag.x, world.camera.rotationDrag.y);
+    ImGui::SliderFloat("Rotation Decay", &world.camera.rotationDecay, 0.f, 10.f);
+    ImGui::SliderFloat("Rotation Deadzone", &world.camera.rotationDeadzone, 0.f, 1.f);
+    ImGui::SliderFloat2("Rotation Velocity", &world.camera.rotationVelocity[0], -100.f, 100.f);
     ImGui::End();
 
     ImGui::Begin("Model");
-    ImGui::SliderFloat3("Position", &quadLayout.transform.position[0], -100, 100);
-    ImGui::SliderFloat3("Rotation", &quadLayout.transform.rotation[0], -180, 180);
-    ImGui::SliderFloat3("Scale", &quadLayout.transform.scale[0], -100, 100);
+    ImGui::SliderFloat3("Position", &quadLayout.transform.position[0], -10, 10);
+    ImGui::SliderFloat3("Rotation", &quadLayout.transform.rotation[0], -10, 10);
+    ImGui::SliderFloat3("Scale", &quadLayout.transform.scale[0], -10, 10);
     ImGui::End();
-    
-    if (sMouse.isMoving && sMouse.button == TMouse::TButton::Right && sMouse.state == TMouse::TButtonState::Hold)
-    {
-      r32v2 mouseDeltaPosition = sMouse.position - sMouse.positionPrevious;
 
-      camera.rotationDrag.x = sMouse.invertX ? -mouseDeltaPosition.x : mouseDeltaPosition.x; // aspect
-      camera.rotationDrag.y = sMouse.invertY ? -mouseDeltaPosition.y : mouseDeltaPosition.y;
-    }
+    if (glm::length(world.camera.rotationVelocity) > world.camera.rotationDeadzone)
+      world.camera.rotationVelocity += -world.camera.rotationVelocity * world.camera.rotationDecay * deltaTime;
     else
-      camera.rotationDrag = { 0.f, 0.f };
+      world.camera.rotationVelocity = { 0.f, 0.f };
 
-    if (glm::length(camera.rotationVelocity) > camera.rotationDeadzone)
-      camera.rotationVelocity += -camera.rotationVelocity * camera.rotationDecay * deltaTime;
-    else
-      camera.rotationVelocity = { 0.f, 0.f };
+    world.camera.rotationVelocity += world.camera.rotationDrag * world.camera.rotationSpeed * deltaTime;
 
-    camera.rotationVelocity += camera.rotationDrag * camera.rotationSpeed * deltaTime;
+    if (world.camera.rotationVelocity.x > 180.f) world.camera.rotationVelocity.x = -180.f;
+    if (world.camera.rotationVelocity.x < -180.f) world.camera.rotationVelocity.x = 180.f;
 
-    if (camera.rotationVelocity.x > 180.f) camera.rotationVelocity.x = -180.f;
-    if (camera.rotationVelocity.x < -180.f) camera.rotationVelocity.x = 180.f;
+    if (world.camera.rotationVelocity.y > 180.f) world.camera.rotationVelocity.y = -180.f;
+    if (world.camera.rotationVelocity.y < -180.f) world.camera.rotationVelocity.y = 180.f;
 
-    if (camera.rotationVelocity.y > 180.f) camera.rotationVelocity.y = -180.f;
-    if (camera.rotationVelocity.y < -180.f) camera.rotationVelocity.y = 180.f;
+    r32m4 localRotation = glm::identity<r32m4>();
+    localRotation = glm::rotate(localRotation, glm::radians(world.camera.rotationVelocity.y), world.camera.localRight);
+    localRotation = glm::rotate(localRotation, glm::radians(world.camera.rotationVelocity.x), world.camera.localUp);
 
-    // TODO: inline functions for matrix ops
-
-    //r32v3 right;
-    //right.x = glm::cos(glm::radians(camera.rotationVelocity.x) * glm::cos(glm::radians(camera.rotationVelocity.y)));
-    //right.y = glm::sin(glm::radians(camera.rotationVelocity.y));
-    //right.z = glm::sin(glm::radians(camera.rotationVelocity.x) * glm::cos(glm::radians(camera.rotationVelocity.y)));
-    //camera.localRight = glm::normalize(right);
-
-    //r32m4 localRotation = glm::identity<r32m4>();
-    //localRotation = glm::rotate(localRotation, glm::radians(camera.rotationVelocity.x), camera.localRight);
-    //localRotation = glm::rotate(localRotation, glm::radians(camera.rotationVelocity.y), camera.localUp);
-
-    //camera.localRight = r32v4{ camera.localRight, 1.f } * localRotation;
-    //camera.localUp = r32v4{ camera.localUp, 1.f } * localRotation;
-    //camera.localForward = r32v4{ camera.localForward, 1.f } * localRotation;
+    world.camera.localRight = localRotation * r32v4{ world.camera.localRight, 1.f };
+    world.camera.localUp = localRotation * r32v4{ world.camera.localUp, 1.f };
+    world.camera.localForward = localRotation * r32v4{ world.camera.localForward, 1.f };
 
     if ((time - prevRenderTime) >= renderRate)
     {
-      projection = camera.Projection(sScreen.aspectRatio);
-      view = camera.View();
+      projection = world.camera.Projection(sScreen.aspectRatio);
+      view = world.camera.View();
       model = glm::identity<r32m4>();
+
+      quadLayout.transform.rotation.y += 2.f * deltaTime;
 
       model = glm::translate(model, quadLayout.transform.position);
       model = glm::rotate(model, quadLayout.transform.rotation.x, { 1.f, 0.f, 0.f });
