@@ -274,8 +274,8 @@ s32 main()
 
     TCameraController()
     {
-      //pTransform = (TTransform*)TACS::Obtain<TTransform>(this);
-      //pCamera = (TCamera*)TACS::Obtain<TCamera>(this);
+      pTransform = (TTransform*)TACS::Obtain<TTransform>(this);
+      pCamera = (TCamera*)TACS::Obtain<TCamera>(this);
     }
 
     void Update(const r32 deltaTime) override
@@ -373,7 +373,7 @@ s32 main()
     //ImGui::End();
 
     TACS::Debug();
-    //TACS::Update(deltaTime);
+    TACS::Update(deltaTime);
 
     if ((time - prevRenderTime) >= renderRate)
     {

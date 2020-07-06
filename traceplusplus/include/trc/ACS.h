@@ -59,12 +59,13 @@ struct TACS
 
   template<typename T>
   requires std::is_base_of_v<TComponent, T>
-  static TComponent* Obtain(TActor* pActor)
-  {
-    auto it = sActors.find(pActor);
-    
-    if (it != sActors.end())
-      return &(*it)->pComponents[typeid(T).hash_code()];
+  static TComponent* Obtain(TComponent* pComponent)
+  {    
+    for (auto pActor : sActors)
+    {
+      auto it = pActor->pComponents->find(typeid(T).hash_code());
+      if (it != pActor->pComponents->end()) return it->second;
+    }
 
     return nullptr;
   }
