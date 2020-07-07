@@ -1,8 +1,8 @@
-#include "trc/Shader.h"
+#include "trc/ShaderLayout.h"
 
 #include "glad/glad.h"
 
-s32 TShader::CheckStatus(s32 shader, s32 type) const
+s32 TShaderLayout::CheckStatus(s32 shader, s32 type) const
 {
   s32 compileInfo;
   s32 compileInfoSize;
@@ -26,7 +26,7 @@ s32 TShader::CheckStatus(s32 shader, s32 type) const
   return 1;
 }
 
-s32 TShader::LinkShaders() const
+s32 TShaderLayout::LinkShaders() const
 {
   glAttachShader(program, vertexShader);
   glAttachShader(program, fragmentShader);
@@ -39,7 +39,7 @@ s32 TShader::LinkShaders() const
   return 1;
 }
 
-s32 TShader::CompileShader(u32 shader, const s8* pSource) const
+s32 TShaderLayout::CompileShader(u32 shader, const s8* pSource) const
 {
   glShaderSource(shader, 1, &pSource, nullptr);
   glCompileShader(shader);
@@ -50,7 +50,7 @@ s32 TShader::CompileShader(u32 shader, const s8* pSource) const
   return 1;
 }
 
-s32 TShader::CompileShaders(const s8* pVertexSource, const s8* pFragmentSource)
+s32 TShaderLayout::CompileShaders(const s8* pVertexSource, const s8* pFragmentSource)
 {
   vertexShader = glCreateShader(GL_VERTEX_SHADER);
 

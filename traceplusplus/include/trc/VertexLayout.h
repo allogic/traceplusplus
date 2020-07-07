@@ -2,7 +2,7 @@
 
 #include "Core.h"
 
-struct TVertexBufferLayout
+struct TVertexLayout
 {
   const u32  width          = 0;
   const u32  height         = 0;
@@ -15,8 +15,8 @@ struct TVertexBufferLayout
   r32*       pVertices      = nullptr;
   u32*       pIndices       = nullptr;
 
-  TVertexBufferLayout(u32 width = 0, u32 height = 0, u32 indexCount = 0);
-  virtual ~TVertexBufferLayout();
+  TVertexLayout(u32 width = 0, u32 height = 0, u32 indexCount = 0);
+  virtual ~TVertexLayout();
 
   s32 CreateBuffers();
 };

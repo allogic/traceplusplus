@@ -450,10 +450,10 @@
     <ClInclude Include="include\trc\ACS.h" />
     <ClInclude Include="include\trc\Components.h" />
     <ClInclude Include="include\trc\Core.h" />
-    <ClInclude Include="include\trc\Shader.h" />
+    <ClInclude Include="include\trc\ShaderLayout.h" />
     <ClInclude Include="include\trc\Shaders.h" />
     <ClInclude Include="include\trc\Trc.h" />
-    <ClInclude Include="include\trc\VertexBufferLayout.h" />
+    <ClInclude Include="include\trc\VertexLayout.h" />
     <ClInclude Include="Renderer.h" />
     <ClInclude Include="Scene.h" />
   </ItemGroup>
@@ -607,8 +607,8 @@
     <ClCompile Include="source\imgui_widgets.cpp" />
     <ClCompile Include="source\trc\ACS.cpp" />
     <ClCompile Include="source\trc\Components.cpp" />
-    <ClCompile Include="source\trc\Shader.cpp" />
-    <ClCompile Include="source\trc\VertexBufferLayout.cpp" />
+    <ClCompile Include="source\trc\ShaderLayout.cpp" />
+    <ClCompile Include="source\trc\VertexLayout.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

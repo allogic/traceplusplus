@@ -2,14 +2,14 @@
 
 #include "Core.h"
 
-struct TShader
+struct TShaderLayout
 {
   u32 program        = 0;
   u32 vertexShader   = 0;
   u32 fragmentShader = 0;
 
-  TShader() = default;
-  virtual ~TShader() = default;
+  TShaderLayout() = default;
+  virtual ~TShaderLayout() = default;
 
   s32 CheckStatus(s32 shader, s32 type) const;
   s32 LinkShaders() const;

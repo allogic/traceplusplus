@@ -1,8 +1,8 @@
 #include "glad/glad.h"
 
-#include "trc/VertexBufferLayout.h"
+#include "trc/VertexLayout.h"
 
-TVertexBufferLayout::TVertexBufferLayout(u32 width, u32 height, u32 indexCount)
+TVertexLayout::TVertexLayout(u32 width, u32 height, u32 indexCount)
   : width(width)
   , height(height)
   , vertexCount(width* height)
@@ -12,13 +12,13 @@ TVertexBufferLayout::TVertexBufferLayout(u32 width, u32 height, u32 indexCount)
   pIndices = (u32*)std::calloc(indexCount, sizeof(u32));
 }
 
-TVertexBufferLayout::~TVertexBufferLayout()
+TVertexLayout::~TVertexLayout()
 {
   delete[] pVertices;
   delete[] pIndices;
 }
 
-s32 TVertexBufferLayout::CreateBuffers()
+s32 TVertexLayout::CreateBuffers()
 {
   glGenVertexArrays(1, &vao);
 

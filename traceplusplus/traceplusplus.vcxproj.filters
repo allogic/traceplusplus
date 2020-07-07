@@ -915,16 +915,16 @@
     <ClInclude Include="include\trc\Shaders.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\trc\Shader.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="include\trc\Core.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="include\trc\Trc.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\trc\VertexBufferLayout.h">
+    <ClInclude Include="include\trc\ShaderLayout.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\trc\VertexLayout.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -1366,16 +1366,16 @@
     <ClCompile Include="source\imgui_widgets.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="source\trc\Shader.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="source\trc\VertexBufferLayout.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="source\trc\ACS.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="source\trc\Components.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="source\trc\ShaderLayout.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="source\trc\VertexLayout.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

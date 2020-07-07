@@ -59,9 +59,11 @@ struct TACS
 
   template<typename T>
   requires std::is_base_of_v<TComponent, T>
-  static TComponent* Obtain(TComponent* pComponent)
-  {    
-    for (auto pActor : sActors)
+  static TComponent* Obtain(TActor* pActor)
+  {
+    auto it = sActors.find(pActor);
+
+    if (it != sActors.end())
     {
       auto it = pActor->pComponents->find(typeid(T).hash_code());
       if (it != pActor->pComponents->end()) return it->second;
@@ -70,7 +72,7 @@ struct TACS
     return nullptr;
   }
 
-  static void Debug();
+  static void DebugFoo();
 
   static void Update(const r32 deltaTime)
   {
@@ -83,5 +85,11 @@ struct TACS
     for (auto pActor : sActors)
       for (auto [hash, pComponent] : *pActor->pComponents)
         pComponent->Render(deltaTime);
+  }
+  static void Debug(const r32 deltaTime)
+  {
+    for (auto pActor : sActors)
+      for (auto [hash, pComponent] : *pActor->pComponents)
+        pComponent->Debug(deltaTime);
   }
 };

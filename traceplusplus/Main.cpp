@@ -34,7 +34,6 @@ struct TMouse
   b8                   invertY          = 0;
   r32v2                position         = {};
   r32v2                deltaPosition    = {};
-  r32v2                positionRegister = {};
   r32v2                positionPrevious = {};
 
   TMouse(b8 invertX, b8 invertY, const r32v2& position)
@@ -172,38 +171,15 @@ s32 main()
   glfwSetCursorPosCallback(pWindow, [](GLFWwindow* pWin, r64 x, r64 y) {
     sMouse.positionPrevious = sMouse.position;
     sMouse.position = { (r32)x, (r32)y };
+    sMouse.deltaPosition = sMouse.position - sMouse.positionPrevious;
     sMouse.isMoving = 1;
     });
   glfwSetMouseButtonCallback(pWindow, [](GLFWwindow* pWin, s32 button, s32 action, s32 mods) {
     sMouse.button = (TMouse::TButton)button;
     sMouse.state = (TMouse::TButtonState)action;
-
-    //if (sMouse.button == TMouse::TButton::Right)
-    //{
-    //  switch (sMouse.state)
-    //  {
-    //  case TMouse::TButtonState::Press:
-    //    //glfwSetInputMode(pWin, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
-    //    sMouse.positionRegister = sMouse.position;
-    //    //sMouse.position = sScreen.screenSize / 2.f;
-    //    //sMouse.positionPrevious = sMouse.position;
-    //    break;
-    //  case TMouse::TButtonState::Hold:
-    //    sMouse.deltaPosition = sMouse.position - sMouse.positionPrevious;
-    //    pWorld->camera.rotationDrag.x = sMouse.invertX ? -sMouse.deltaPosition.x : sMouse.deltaPosition.x; // aspect
-    //    pWorld->camera.rotationDrag.y = sMouse.invertY ? -sMouse.deltaPosition.y : sMouse.deltaPosition.y;
-    //    break;
-    //  case TMouse::TButtonState::Release:
-    //    sMouse.position = sMouse.positionRegister;
-    //    //sMouse.positionPrevious = sMouse.position;
-    //    pWorld->camera.rotationDrag = { 0.f, 0.f };
-    //    //glfwSetInputMode(pWin, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-    //    break;
-    //  }
-    //}
     });
 
-  TVertexBufferLayout quadLayout(4, 5, 6);
+  TVertexLayout quadLayout(4, 5, 6);
   quadLayout.pVertices[0] = -.5f;
   quadLayout.pVertices[1] = -.5f;
   quadLayout.pVertices[2] = 0.f;
@@ -235,51 +211,116 @@ s32 main()
   quadLayout.pIndices[4] = 2;
   quadLayout.pIndices[5] = 0;
 
-  //if (!CreateBuffers(quadLayout))
-  //  return FAILED_CREATING_BUFFER;
-  //
-  //u32 shader = 0;
-  //
-  //if (!CompileShaders(shader, TraceVertexSource, TraceFragmentSource))
-  //  return FAILED_LOADING_SHADER;
+  if (!quadLayout.CreateBuffers())
+    return FAILED_CREATING_BUFFER;
 
-  //u32 uProjection;
-  //u32 uView;
-  //u32 uModel;
+  TShaderLayout shaderLayout;
 
-  //if (uProjection = glGetUniformLocation(shader, "uProjection"); uProjection < 0)
-  //  return FAILED_SHADER_UNIFORM;
-  //
-  //if (uView = glGetUniformLocation(shader, "uView"); uView < 0)
-  //  return FAILED_SHADER_UNIFORM;
-  //
-  //if (uModel = glGetUniformLocation(shader, "uModel"); uModel < 0)
-  //  return FAILED_SHADER_UNIFORM;
+  if (!shaderLayout.CompileShaders(VertexDefault, FragmentDefault))
+    return FAILED_LOADING_SHADER;
 
-  for (u32 i = 0; i < 1024; i++)
+  struct TRenderController : TACS::TComponent
   {
-    auto pPortalActor = TACS::Create();
-    TACS::Attach<TTransform>(pPortalActor);
-    TACS::Attach<TMesh>(pPortalActor, &quadLayout);
-  }
+    TTransform* pTransform = nullptr;
+    TMesh*      pMesh      = nullptr;
+    TShader*    pShader    = nullptr;
+    TCamera*    pCamera    = nullptr;
 
-  auto pCameraActor = TACS::Create();
-  TACS::Attach<TTransform>(pCameraActor);
-  TACS::Attach<TCamera>(pCameraActor);
+    TRenderController(TACS::TActor* pActor, TACS::TActor* pCameraActor)
+    {
+      pMesh = (TMesh*)TACS::Obtain<TMesh>(pActor);
+      pTransform = (TTransform*)TACS::Obtain<TTransform>(pActor);
+      pShader = (TShader*)TACS::Obtain<TShader>(pActor);
+      pCamera = (TCamera*)TACS::Obtain<TCamera>(pCameraActor);
+
+      pTransform->position = { std::rand() % 100, std::rand() % 100, std::rand() % 100, };
+      pTransform->rotation = { std::rand() % 360, std::rand() % 360, std::rand() % 360, };
+      pTransform->scale = { 1.f, 1.f, 0.f };
+    }
+
+    void Render(const r32 deltaTime) const override
+    {
+      // TACS::Submit(TRenderCommand{});
+
+      glUseProgram(pShader->pShaderLayout->program);
+      glBindVertexArray(pMesh->pVertexLayout->vao);
+
+      r32m4 model = glm::identity<r32m4>();
+
+      model = glm::translate(model, pTransform->position);
+      model = glm::rotate(model, pTransform->rotation.x, { 1.f, 0.f, 0.f });
+      model = glm::rotate(model, pTransform->rotation.y, { 0.f, 1.f, 0.f });
+      model = glm::rotate(model, pTransform->rotation.z, { 0.f, 0.f, 1.f });
+      model = glm::scale(model, pTransform->scale);
+
+      s32 uProjection = glGetUniformLocation(pShader->pShaderLayout->program, "uProjection");
+      s32 uView = glGetUniformLocation(pShader->pShaderLayout->program, "uView");
+      s32 uModel = glGetUniformLocation(pShader->pShaderLayout->program, "uModel");
+
+      glUniformMatrix4fv(uProjection, 1, 0, &pCamera->projectionTensor[0][0]);
+      glUniformMatrix4fv(uView, 1, 0, &pCamera->viewTensor[0][0]);
+      glUniformMatrix4fv(uModel, 1, 0, &model[0][0]);
+
+      glDrawElements(GL_TRIANGLES, pMesh->pVertexLayout->indexCount, GL_UNSIGNED_INT, 0);
+    }
+    void Debug(const r32 deltaTime) override
+    {
+      ImGui::Begin("Camera");
+      ImGui::Checkbox("Projection", (b8*)(&pCamera->projection));
+      ImGui::SliderFloat3("Position", &pTransform->position[0], -100.f, 100.f);
+      ImGui::SliderFloat3("Rotation", &pTransform->rotation[0], -180.f, 180.f);
+      ImGui::SliderFloat3("Scale", &pTransform->scale[0], -100.f, 100.f);
+      ImGui::LabelText("Right", "{%3.3f, %3.3f, %3.3f}", pCamera->right.x, pCamera->right.y, pCamera->right.z);
+      ImGui::LabelText("Up", "{%3.3f, %3.3f, %3.3f}", pCamera->up.x, pCamera->up.y, pCamera->up.z);
+      ImGui::LabelText("Forward", "{%3.3f, %3.3f, %3.3f}", pCamera->forward.x, pCamera->forward.y, pCamera->forward.z);
+      ImGui::LabelText("Local Right", "{%3.3f, %3.3f, %3.3f}", pCamera->localRight.x, pCamera->localRight.y, pCamera->localRight.z);
+      ImGui::LabelText("Local Up", "{%3.3f, %3.3f, %3.3f}", pCamera->localUp.x, pCamera->localUp.y, pCamera->localUp.z);
+      ImGui::LabelText("Local Forward", "{%3.3f, %3.3f, %3.3f}", pCamera->localForward.x, pCamera->localForward.y, pCamera->localForward.z);
+      ImGui::SliderFloat("Position Speed", &pCamera->positionSpeed, 0.f, 10.f);
+      ImGui::SliderFloat("Rotation Speed", &pCamera->rotationSpeed, 0.f, 10.f);
+      ImGui::LabelText("Rotation Drag", "{%3.3f, %3.3f}", pCamera->rotationDrag.x, pCamera->rotationDrag.y);
+      ImGui::SliderFloat("Rotation Decay", &pCamera->rotationDecay, 0.f, 10.f);
+      ImGui::SliderFloat("Rotation Deadzone", &pCamera->rotationDeadzone, 0.f, 1.f);
+      ImGui::SliderFloat2("Rotation Velocity", &pCamera->rotationVelocity[0], -100.f, 100.f);
+      ImGui::End();
+    }
+  };
 
   struct TCameraController : TACS::TComponent
   {
     TTransform* pTransform = nullptr;
-    TCamera*    pCamera    = nullptr;
+    TCamera* pCamera = nullptr;
 
-    TCameraController()
+    TCameraController(TACS::TActor* pActor)
     {
-      pTransform = (TTransform*)TACS::Obtain<TTransform>(this);
-      pCamera = (TCamera*)TACS::Obtain<TCamera>(this);
+      pTransform = (TTransform*)TACS::Obtain<TTransform>(pActor);
+      pCamera = (TCamera*)TACS::Obtain<TCamera>(pActor);
     }
 
     void Update(const r32 deltaTime) override
     {
+      if (sMouse.button == TMouse::TButton::Right)
+      {
+        switch (sMouse.state)
+        {
+        case TMouse::TButtonState::Press:
+          //glfwSetInputMode(pWin, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
+          //sMouse.positionRegister = sMouse.position;
+          //sMouse.position = sScreen.screenSize / 2.f;
+          //sMouse.positionPrevious = sMouse.position;
+          break;
+        case TMouse::TButtonState::Hold:
+          pCamera->rotationDrag.x = sMouse.invertX ? -sMouse.deltaPosition.x : sMouse.deltaPosition.x; // aspect
+          pCamera->rotationDrag.y = sMouse.invertY ? -sMouse.deltaPosition.y : sMouse.deltaPosition.y;
+          break;
+        case TMouse::TButtonState::Release:
+          //sMouse.positionPrevious = sMouse.position;
+          pCamera->rotationDrag = { 0.f, 0.f };
+          //glfwSetInputMode(pWin, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+          break;
+        }
+      }
+
       if (glm::length(pCamera->rotationVelocity) > pCamera->rotationDeadzone)
         pCamera->rotationVelocity += -pCamera->rotationVelocity * pCamera->rotationDecay * deltaTime;
       else
@@ -300,16 +341,31 @@ s32 main()
       pCamera->localRight = localRotation * r32v4{ pCamera->localRight, 1.f };
       pCamera->localUp = localRotation * r32v4{ pCamera->localUp, 1.f };
       pCamera->localForward = localRotation * r32v4{ pCamera->localForward, 1.f };
+
+      pCamera->UpdateProjection(sScreen.aspectRatio);
+      pCamera->UpdateView(pTransform);
     }
   };
 
-  TACS::Attach<TCameraController>(pCameraActor);
+  auto pCameraActor = TACS::Create();
+  TACS::Attach<TTransform>(pCameraActor);
+  TACS::Attach<TCamera>(pCameraActor);
+  TACS::Attach<TCameraController>(pCameraActor, pCameraActor);
+
+  for (u32 i = 0; i < 1; i++)
+  {
+    auto pPortalActor = TACS::Create();
+    TACS::Attach<TTransform>(pPortalActor);
+    TACS::Attach<TMesh>(pPortalActor, &quadLayout);
+    TACS::Attach<TShader>(pPortalActor, &shaderLayout);
+    TACS::Attach<TRenderController>(pPortalActor, pPortalActor, pCameraActor);
+  }
 
   r32 time = 0.f;
   r32 prevTime = 0.f;
   r32 deltaTime = 0.f;
 
-  s32 fps = 80;
+  s32 fps = 60;
   r32 renderRate = 1.f / fps;
   r32 prevRenderTime = 0.f;
 
@@ -337,42 +393,20 @@ s32 main()
     ImGui::SliderInt("Fps", &fps, 0, 120);
     ImGui::End();
 
-    //ImGui::Begin("Mouse");
-    //ImGui::LabelText("Button", "%d", sMouse.button);
-    //ImGui::LabelText("State", "%d", sMouse.state);
-    //ImGui::LabelText("Is Moving", "%d", sMouse.isMoving);
-    //ImGui::Checkbox("Invert X", &sMouse.invertX);
-    //ImGui::Checkbox("Invert Y", &sMouse.invertY);
-    //ImGui::LabelText("Position", "{%3.3f, %3.3f}", sMouse.position.x, sMouse.position.y);
-    //ImGui::LabelText("Position Previous", "{%3.3f, %3.3f}", sMouse.positionPrevious.x, sMouse.positionPrevious.y);
-    //ImGui::End();
+    ImGui::Begin("Mouse");
+    ImGui::LabelText("Button", "%d", sMouse.button);
+    ImGui::LabelText("State", "%d", sMouse.state);
+    ImGui::LabelText("Is Moving", "%d", sMouse.isMoving);
+    ImGui::Checkbox("Invert X", &sMouse.invertX);
+    ImGui::Checkbox("Invert Y", &sMouse.invertY);
+    ImGui::LabelText("Position", "{%3.3f, %3.3f}", sMouse.position.x, sMouse.position.y);
+    ImGui::LabelText("Position Previous", "{%3.3f, %3.3f}", sMouse.positionPrevious.x, sMouse.positionPrevious.y);
+    ImGui::LabelText("Delta Position", "{%3.3f, %3.3f}", sMouse.deltaPosition.x, sMouse.deltaPosition.y);
+    ImGui::End();
 
-    //ImGui::Begin("Camera");
-    //ImGui::Checkbox("Projection", (b8*)(&world.camera.projection));
-    //ImGui::SliderFloat3("Position", &world.camera.transform.position[0], -100.f, 100.f);
-    //ImGui::SliderFloat3("Rotation", &world.camera.transform.rotation[0], -180.f, 180.f);
-    //ImGui::SliderFloat3("Scale", &world.camera.transform.scale[0], -100.f, 100.f);
-    //ImGui::LabelText("Right", "{%3.3f, %3.3f, %3.3f}", world.camera.right.x, world.camera.right.y, world.camera.right.z);
-    //ImGui::LabelText("Up", "{%3.3f, %3.3f, %3.3f}", world.camera.up.x, world.camera.up.y, world.camera.up.z);
-    //ImGui::LabelText("Forward", "{%3.3f, %3.3f, %3.3f}", world.camera.forward.x, world.camera.forward.y, world.camera.forward.z);
-    //ImGui::LabelText("Local Right", "{%3.3f, %3.3f, %3.3f}", world.camera.localRight.x, world.camera.localRight.y, world.camera.localRight.z);
-    //ImGui::LabelText("Local Up", "{%3.3f, %3.3f, %3.3f}", world.camera.localUp.x, world.camera.localUp.y, world.camera.localUp.z);
-    //ImGui::LabelText("Local Forward", "{%3.3f, %3.3f, %3.3f}", world.camera.localForward.x, world.camera.localForward.y, world.camera.localForward.z);
-    //ImGui::SliderFloat("Position Speed", &world.camera.positionSpeed, 0.f, 10.f);
-    //ImGui::SliderFloat("Rotation Speed", &world.camera.rotationSpeed, 0.f, 10.f);
-    //ImGui::LabelText("Rotation Drag", "{%3.3f, %3.3f}", world.camera.rotationDrag.x, world.camera.rotationDrag.y);
-    //ImGui::SliderFloat("Rotation Decay", &world.camera.rotationDecay, 0.f, 10.f);
-    //ImGui::SliderFloat("Rotation Deadzone", &world.camera.rotationDeadzone, 0.f, 1.f);
-    //ImGui::SliderFloat2("Rotation Velocity", &world.camera.rotationVelocity[0], -100.f, 100.f);
-    //ImGui::End();
+    TACS::DebugFoo();
 
-    //ImGui::Begin("Model");
-    //ImGui::SliderFloat3("Position", &quadLayout.transform.position[0], -10, 10);
-    //ImGui::SliderFloat3("Rotation", &quadLayout.transform.rotation[0], -10, 10);
-    //ImGui::SliderFloat3("Scale", &quadLayout.transform.scale[0], -10, 10);
-    //ImGui::End();
-
-    TACS::Debug();
+    TACS::Debug(deltaTime);
     TACS::Update(deltaTime);
 
     if ((time - prevRenderTime) >= renderRate)
@@ -381,26 +415,6 @@ s32 main()
       glClear(GL_COLOR_BUFFER_BIT);
 
       TACS::Render(deltaTime);
-      //glUseProgram(shader);
-      //glBindVertexArray(quadLayout.vao);
-
-      //projection = world.camera.Projection(sScreen.aspectRatio);
-      //view = world.camera.View();
-      //model = glm::identity<r32m4>();
-
-      //quadLayout.transform.rotation.y += 2.f * deltaTime;
-
-      //model = glm::translate(model, quadLayout.transform.position);
-      //model = glm::rotate(model, quadLayout.transform.rotation.x, { 1.f, 0.f, 0.f });
-      //model = glm::rotate(model, quadLayout.transform.rotation.y, { 0.f, 1.f, 0.f });
-      //model = glm::rotate(model, quadLayout.transform.rotation.z, { 0.f, 0.f, 1.f });
-      //model = glm::scale(model, quadLayout.transform.scale);
-
-      //glUniformMatrix4fv(uProjection, 1, 0, &projection[0][0]);
-      //glUniformMatrix4fv(uView, 1, 0, &view[0][0]);
-      //glUniformMatrix4fv(uModel, 1, 0, &model[0][0]);
-
-      //glDrawElements(GL_TRIANGLES, quadLayout.indexCount, GL_UNSIGNED_INT, 0);
 
       prevRenderTime = time;
     }
