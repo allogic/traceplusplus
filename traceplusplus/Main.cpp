@@ -255,7 +255,7 @@ s32 main()
 
     void Render(const r32 deltaTime) const override
     {
-      // TACS::Submit(TRenderJob{program, vao});
+      TRenderer::Submit(TRenderer::TRenderJob{pShader->pShaderLayout->program, pMesh->pVertexLayout->vao});
 
       glUseProgram(pShader->pShaderLayout->program);
       glBindVertexArray(pMesh->pVertexLayout->vao);
@@ -401,14 +401,16 @@ s32 main()
     ImGui::LabelText("Key", "%d", sKeyboard.key);
     ImGui::End();
 
-    TACS::Debug();
     TRenderer::Debug();
+    TACS::Debug();
 
     TACS::Update(deltaTime);
 
     if ((time - prevRenderTime) >= renderRate)
     {
+      TRenderer::Clear();
       TACS::Render(deltaTime);
+      TRenderer::Render(deltaTime);
 
       prevRenderTime = time;
     }

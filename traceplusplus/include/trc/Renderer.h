@@ -10,9 +10,10 @@ struct TRenderer
     u32 vao;
   };
 
-  inline static std::queue<TRenderJob> sRenderJobs = {};
   inline static std::vector<TRenderJob> sLambertPass = {};
 
-  static void Submit(const TRenderJob& renderJob) { sRenderJobs.emplace(renderJob); }
+  static void Submit(const TRenderJob& renderJob) { sLambertPass.emplace_back(renderJob); }
+  static void Render(const r32 deltaTime);
+  static void Clear();
   static void Debug();
 };
