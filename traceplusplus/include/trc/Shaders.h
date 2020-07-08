@@ -8,17 +8,20 @@ constexpr static const s8 VertexDefault[] = R"glsl(
 layout (location = 0) in vec3 lPosition;
 layout (location = 1) in vec2 lUv;
 
-in vec2 iScreenSize;
+in vec2       iScreenSize;
 
-uniform mat4 uProjection;
-uniform mat4 uView;
-uniform mat4 uModel;
+uniform float uDeltaTime;
+uniform mat4  uProjection;
+uniform mat4  uView;
+uniform mat4  uModel;
 
-out vec2 oUv;
-out vec2 oScreenSize;
+out float     oDeltaTime;
+out vec2      oUv;
+out vec2      oScreenSize;
 
 void main()
 {
+  oDeltaTime = uDeltaTime;
   oUv = lUv;
   oScreenSize = iScreenSize;
 
@@ -29,13 +32,14 @@ void main()
 constexpr static const s8 FragmentDefault[] = R"glsl(
 #version 460 core
 
-in vec2 oUv;
-in vec2 oScreenSize;
+in float oDeltaTime;
+in vec2  oUv;
+in vec2  oScreenSize;
 
 out vec4 FragColor;
 
 void main()
 {
-  FragColor = vec4(1., 0., 0., 1.);
+  FragColor = vec4(1., 1., 0., 1.);
 }
 )glsl";

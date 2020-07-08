@@ -17,9 +17,7 @@ struct TACS
 
     virtual void Update(const r32 deltaTime) {};
     virtual void Render(const r32 deltaTime) const {};
-    virtual void Debug(const r32 deltaTime) {};
   };
-
   struct TActor
   {
     TComponents* pComponents = nullptr;
@@ -32,7 +30,7 @@ struct TACS
 
   template<typename T = TActor, typename ... Args>
   requires std::is_base_of_v<TActor, T>
-  static T* Create(Args&&... arg)
+  inline static T* Create(Args&&... arg)
   {
     auto pActor = new T(std::forward<Args>(arg)...);
     pActor->pComponents = new TComponents;
@@ -44,7 +42,7 @@ struct TACS
 
   template<typename T, typename ... Args>
   requires std::is_base_of_v<TComponent, T>
-  static TComponent* Attach(TACS::TActor* pActor, Args&&... arg)
+  inline static TComponent* Attach(TACS::TActor* pActor, Args&&... arg)
   {
     auto it = sActors.find(pActor);
 
@@ -59,7 +57,7 @@ struct TACS
 
   template<typename T>
   requires std::is_base_of_v<TComponent, T>
-  static TComponent* Obtain(TActor* pActor)
+  inline static TComponent* Obtain(TActor* pActor)
   {
     auto it = sActors.find(pActor);
 
@@ -72,24 +70,17 @@ struct TACS
     return nullptr;
   }
 
-  static void DebugFoo();
-
-  static void Update(const r32 deltaTime)
+  static void        Debug();
+  inline static void Update(const r32 deltaTime)
   {
     for (auto pActor : sActors)
       for (auto [hash, pComponent] : *pActor->pComponents)
         pComponent->Update(deltaTime);
   }
-  static void Render(const r32 deltaTime)
+  inline static void Render(const r32 deltaTime)
   {
     for (auto pActor : sActors)
       for (auto [hash, pComponent] : *pActor->pComponents)
         pComponent->Render(deltaTime);
-  }
-  static void Debug(const r32 deltaTime)
-  {
-    for (auto pActor : sActors)
-      for (auto [hash, pComponent] : *pActor->pComponents)
-        pComponent->Debug(deltaTime);
   }
 };

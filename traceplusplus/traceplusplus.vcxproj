@@ -450,6 +450,7 @@
     <ClInclude Include="include\trc\ACS.h" />
     <ClInclude Include="include\trc\Components.h" />
     <ClInclude Include="include\trc\Core.h" />
+    <ClInclude Include="include\trc\Renderer.h" />
     <ClInclude Include="include\trc\ShaderLayout.h" />
     <ClInclude Include="include\trc\Shaders.h" />
     <ClInclude Include="include\trc\Trc.h" />
@@ -607,6 +608,7 @@
     <ClCompile Include="source\imgui_widgets.cpp" />
     <ClCompile Include="source\trc\ACS.cpp" />
     <ClCompile Include="source\trc\Components.cpp" />
+    <ClCompile Include="source\trc\Renderer.cpp" />
     <ClCompile Include="source\trc\ShaderLayout.cpp" />
     <ClCompile Include="source\trc\VertexLayout.cpp" />
   </ItemGroup>

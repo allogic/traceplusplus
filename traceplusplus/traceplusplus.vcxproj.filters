@@ -927,6 +927,9 @@
     <ClInclude Include="include\trc\VertexLayout.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="include\trc\Renderer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="include\glm\detail\func_common.inl">
@@ -1376,6 +1379,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="source\trc\VertexLayout.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="source\trc\Renderer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

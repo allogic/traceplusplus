@@ -29,3 +29,4 @@ typedef glm::fmat4    r32m4;
 #include <memory>
 #include <utility>
 #include <concepts>
+#include <queue>

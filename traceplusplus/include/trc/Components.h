@@ -42,7 +42,7 @@ struct TCamera : TACS::TComponent
   r32m4       projectionTensor = glm::identity<r32m4>();
   r32m4       viewTensor       = glm::identity<r32m4>();
 
-  TCamera() = default;
+  TCamera(TProjection projection) : projection(projection) {}
   virtual ~TCamera() = default;
 
   virtual void UpdateProjection(r32 aspect);

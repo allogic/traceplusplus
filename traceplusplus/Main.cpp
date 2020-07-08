@@ -21,26 +21,34 @@ struct TScreen
     , aspectRatio(screenSize.x / screenSize.y) {};
   virtual ~TScreen() = default;
 };
-
 struct TMouse
 {
-  enum class TButton      : s32 { None = -1, Left, Right, Middle };
-  enum class TButtonState : s32 { None = -1, Release, Press, Hold };
+  enum class TButtonState : s32 { None = -1, Release, Press };
 
-  TMouse::TButton      button           = TMouse::TButton::None;
-  TMouse::TButtonState state            = TMouse::TButtonState::None;
-  u32                  isMoving         = 0;
-  b8                   invertX          = 0;
-  b8                   invertY          = 0;
-  r32v2                position         = {};
-  r32v2                deltaPosition    = {};
-  r32v2                positionPrevious = {};
+  TButtonState state            = TButtonState::None;
+  u32          button           = 0;
+  u32          isMoving         = 0;
+  b8           invertX          = 0;
+  b8           invertY          = 0;
+  r32v2        position         = {};
+  r32v2        deltaPosition    = {};
+  r32v2        positionPrevious = {};
 
   TMouse(b8 invertX, b8 invertY, const r32v2& position)
     : invertX(invertX)
     , invertY(invertY)
     , position(position) {}
   virtual ~TMouse() = default;
+};
+struct TKeyboard
+{
+  enum class TKeyState : s32 { None = -1, Release, Press, Hold };
+
+  TKeyState state    = TKeyState::None;
+  u32       key      = 0;
+
+  TKeyboard() = default;
+  virtual ~TKeyboard() = default;
 };
 
 #define GL_MAJOR 4
@@ -116,9 +124,10 @@ struct TMouse
 //  CSphere mSphere{ { 0, 0, 0 }, 0.5f };
 //};
 
-static s32     sStatus = 1;
-static TScreen sScreen = { { 1280.f, 720.f } };
-static TMouse  sMouse  = { 1, 0, sScreen.screenSize / 2.f };
+static s32       sStatus   = 1;
+static TScreen   sScreen   = { { 1280.f, 720.f } };
+static TMouse    sMouse    = { 1, 0, sScreen.screenSize / 2.f };
+static TKeyboard sKeyboard = {};
 
 s32 main()
 {
@@ -175,34 +184,38 @@ s32 main()
     sMouse.isMoving = 1;
     });
   glfwSetMouseButtonCallback(pWindow, [](GLFWwindow* pWin, s32 button, s32 action, s32 mods) {
-    sMouse.button = (TMouse::TButton)button;
     sMouse.state = (TMouse::TButtonState)action;
+    sMouse.button = (u32)button;
+    });
+  glfwSetKeyCallback(pWindow, [](GLFWwindow* pWin, s32 key, s32 scanCode, s32 action, s32 mods) {
+    sKeyboard.state = (TKeyboard::TKeyState)action;
+    sKeyboard.key = (u32)key;
     });
 
   TVertexLayout quadLayout(4, 5, 6);
   quadLayout.pVertices[0] = -.5f;
   quadLayout.pVertices[1] = -.5f;
   quadLayout.pVertices[2] = 0.f;
-  //quadLayout.pVertices[3] = 0.f;
-  //quadLayout.pVertices[4] = 0.f;
+  quadLayout.pVertices[3] = 0.f;
+  quadLayout.pVertices[4] = 0.f;
 
   quadLayout.pVertices[5] = .5f;
   quadLayout.pVertices[6] = -.5f;
   quadLayout.pVertices[7] = 0.f;
-  //quadLayout.pVertices[8] = 1.f;
-  //quadLayout.pVertices[9] = 0.f;
+  quadLayout.pVertices[8] = 1.f;
+  quadLayout.pVertices[9] = 0.f;
 
   quadLayout.pVertices[10] = -.5f;
   quadLayout.pVertices[11] = .5f;
   quadLayout.pVertices[12] = 0.f;
-  //quadLayout.pVertices[13] = 0.f;
-  //quadLayout.pVertices[14] = 1.f;
+  quadLayout.pVertices[13] = 0.f;
+  quadLayout.pVertices[14] = 1.f;
 
   quadLayout.pVertices[15] = .5f;
   quadLayout.pVertices[16] = .5f;
   quadLayout.pVertices[17] = 0.f;
-  //quadLayout.pVertices[18] = 1.f;
-  //quadLayout.pVertices[19] = 1.f;
+  quadLayout.pVertices[18] = 1.f;
+  quadLayout.pVertices[19] = 1.f;
 
   quadLayout.pIndices[0] = 3;
   quadLayout.pIndices[1] = 1;
@@ -233,14 +246,16 @@ s32 main()
       pShader = (TShader*)TACS::Obtain<TShader>(pActor);
       pCamera = (TCamera*)TACS::Obtain<TCamera>(pCameraActor);
 
-      pTransform->position = { std::rand() % 100, std::rand() % 100, std::rand() % 100, };
-      pTransform->rotation = { std::rand() % 360, std::rand() % 360, std::rand() % 360, };
-      pTransform->scale = { 1.f, 1.f, 0.f };
+      pTransform->position = { (std::rand() % 100) - 50, (std::rand() % 100) - 50, (std::rand() % 100) - 50 };
+      pTransform->rotation = { std::rand() % 360, std::rand() % 360, std::rand() % 360 };
+      pTransform->scale    = { std::rand() % 10, std::rand() % 10, 0.f };
+      //pTransform->position = { .5f, .5f, 1.f };
+      //pTransform->scale = { 1, 1, 0.f };
     }
 
     void Render(const r32 deltaTime) const override
     {
-      // TACS::Submit(TRenderCommand{});
+      // TACS::Submit(TRenderJob{program, vao});
 
       glUseProgram(pShader->pShaderLayout->program);
       glBindVertexArray(pMesh->pVertexLayout->vao);
@@ -253,36 +268,17 @@ s32 main()
       model = glm::rotate(model, pTransform->rotation.z, { 0.f, 0.f, 1.f });
       model = glm::scale(model, pTransform->scale);
 
+      s32 uDeltaTime = glGetUniformLocation(pShader->pShaderLayout->program, "uDeltaTime");
       s32 uProjection = glGetUniformLocation(pShader->pShaderLayout->program, "uProjection");
       s32 uView = glGetUniformLocation(pShader->pShaderLayout->program, "uView");
       s32 uModel = glGetUniformLocation(pShader->pShaderLayout->program, "uModel");
 
+      glUniform1f(uDeltaTime, deltaTime);
       glUniformMatrix4fv(uProjection, 1, 0, &pCamera->projectionTensor[0][0]);
       glUniformMatrix4fv(uView, 1, 0, &pCamera->viewTensor[0][0]);
       glUniformMatrix4fv(uModel, 1, 0, &model[0][0]);
 
       glDrawElements(GL_TRIANGLES, pMesh->pVertexLayout->indexCount, GL_UNSIGNED_INT, 0);
-    }
-    void Debug(const r32 deltaTime) override
-    {
-      ImGui::Begin("Camera");
-      ImGui::Checkbox("Projection", (b8*)(&pCamera->projection));
-      ImGui::SliderFloat3("Position", &pTransform->position[0], -100.f, 100.f);
-      ImGui::SliderFloat3("Rotation", &pTransform->rotation[0], -180.f, 180.f);
-      ImGui::SliderFloat3("Scale", &pTransform->scale[0], -100.f, 100.f);
-      ImGui::LabelText("Right", "{%3.3f, %3.3f, %3.3f}", pCamera->right.x, pCamera->right.y, pCamera->right.z);
-      ImGui::LabelText("Up", "{%3.3f, %3.3f, %3.3f}", pCamera->up.x, pCamera->up.y, pCamera->up.z);
-      ImGui::LabelText("Forward", "{%3.3f, %3.3f, %3.3f}", pCamera->forward.x, pCamera->forward.y, pCamera->forward.z);
-      ImGui::LabelText("Local Right", "{%3.3f, %3.3f, %3.3f}", pCamera->localRight.x, pCamera->localRight.y, pCamera->localRight.z);
-      ImGui::LabelText("Local Up", "{%3.3f, %3.3f, %3.3f}", pCamera->localUp.x, pCamera->localUp.y, pCamera->localUp.z);
-      ImGui::LabelText("Local Forward", "{%3.3f, %3.3f, %3.3f}", pCamera->localForward.x, pCamera->localForward.y, pCamera->localForward.z);
-      ImGui::SliderFloat("Position Speed", &pCamera->positionSpeed, 0.f, 10.f);
-      ImGui::SliderFloat("Rotation Speed", &pCamera->rotationSpeed, 0.f, 10.f);
-      ImGui::LabelText("Rotation Drag", "{%3.3f, %3.3f}", pCamera->rotationDrag.x, pCamera->rotationDrag.y);
-      ImGui::SliderFloat("Rotation Decay", &pCamera->rotationDecay, 0.f, 10.f);
-      ImGui::SliderFloat("Rotation Deadzone", &pCamera->rotationDeadzone, 0.f, 1.f);
-      ImGui::SliderFloat2("Rotation Velocity", &pCamera->rotationVelocity[0], -100.f, 100.f);
-      ImGui::End();
     }
   };
 
@@ -299,27 +295,25 @@ s32 main()
 
     void Update(const r32 deltaTime) override
     {
-      if (sMouse.button == TMouse::TButton::Right)
+      if (sMouse.isMoving && sMouse.button == GLFW_MOUSE_BUTTON_RIGHT && sMouse.state == TMouse::TButtonState::Press)
       {
-        switch (sMouse.state)
-        {
-        case TMouse::TButtonState::Press:
-          //glfwSetInputMode(pWin, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
-          //sMouse.positionRegister = sMouse.position;
-          //sMouse.position = sScreen.screenSize / 2.f;
-          //sMouse.positionPrevious = sMouse.position;
-          break;
-        case TMouse::TButtonState::Hold:
-          pCamera->rotationDrag.x = sMouse.invertX ? -sMouse.deltaPosition.x : sMouse.deltaPosition.x; // aspect
-          pCamera->rotationDrag.y = sMouse.invertY ? -sMouse.deltaPosition.y : sMouse.deltaPosition.y;
-          break;
-        case TMouse::TButtonState::Release:
-          //sMouse.positionPrevious = sMouse.position;
-          pCamera->rotationDrag = { 0.f, 0.f };
-          //glfwSetInputMode(pWin, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-          break;
-        }
+        pCamera->rotationDrag.x = sMouse.invertX ? -sMouse.deltaPosition.x : sMouse.deltaPosition.x; // aspect
+        pCamera->rotationDrag.y = sMouse.invertY ? -sMouse.deltaPosition.y : sMouse.deltaPosition.y;
       }
+      else
+      {
+        pCamera->rotationDrag = { 0.f, 0.f };
+      }
+
+      if (sKeyboard.key == GLFW_KEY_W && (sKeyboard.state == TKeyboard::TKeyState::Press || sKeyboard.state == TKeyboard::TKeyState::Hold))
+        pTransform->position += pCamera->localForward * pCamera->positionSpeed * deltaTime;
+      if (sKeyboard.key == GLFW_KEY_S && (sKeyboard.state == TKeyboard::TKeyState::Press || sKeyboard.state == TKeyboard::TKeyState::Hold))
+        pTransform->position -= pCamera->localForward * pCamera->positionSpeed * deltaTime;
+
+      if (sKeyboard.key == GLFW_KEY_A && (sKeyboard.state == TKeyboard::TKeyState::Press || sKeyboard.state == TKeyboard::TKeyState::Hold))
+        pTransform->position += pCamera->localRight * pCamera->positionSpeed * deltaTime;
+      if (sKeyboard.key == GLFW_KEY_D && (sKeyboard.state == TKeyboard::TKeyState::Press || sKeyboard.state == TKeyboard::TKeyState::Hold))
+        pTransform->position -= pCamera->localRight * pCamera->positionSpeed * deltaTime;
 
       if (glm::length(pCamera->rotationVelocity) > pCamera->rotationDeadzone)
         pCamera->rotationVelocity += -pCamera->rotationVelocity * pCamera->rotationDecay * deltaTime;
@@ -349,10 +343,10 @@ s32 main()
 
   auto pCameraActor = TACS::Create();
   TACS::Attach<TTransform>(pCameraActor);
-  TACS::Attach<TCamera>(pCameraActor);
+  TACS::Attach<TCamera>(pCameraActor, TCamera::TProjection::Perspective);
   TACS::Attach<TCameraController>(pCameraActor, pCameraActor);
 
-  for (u32 i = 0; i < 1; i++)
+  for (u32 i = 0; i < 256; i++)
   {
     auto pPortalActor = TACS::Create();
     TACS::Attach<TTransform>(pPortalActor);
@@ -365,7 +359,7 @@ s32 main()
   r32 prevTime = 0.f;
   r32 deltaTime = 0.f;
 
-  s32 fps = 60;
+  s32 fps = 120;
   r32 renderRate = 1.f / fps;
   r32 prevRenderTime = 0.f;
 
@@ -379,10 +373,8 @@ s32 main()
     deltaTime = time - prevTime;
     renderRate = 1.f / fps;
 
-    //if (glfwGetKey(pWindow, GLFW_KEY_W) == GLFW_PRESS) world.camera.transform.position += world.camera.localForward * world.camera.positionSpeed * deltaTime;
-    //if (glfwGetKey(pWindow, GLFW_KEY_S) == GLFW_PRESS) world.camera.transform.position -= world.camera.localForward * world.camera.positionSpeed * deltaTime;
-    //if (glfwGetKey(pWindow, GLFW_KEY_A) == GLFW_PRESS) world.camera.transform.position += world.camera.localRight * world.camera.positionSpeed * deltaTime;
-    //if (glfwGetKey(pWindow, GLFW_KEY_D) == GLFW_PRESS) world.camera.transform.position -= world.camera.localRight * world.camera.positionSpeed * deltaTime;
+    glClearColor(0.f, 0.f, 0.f, 1.f);
+    glClear(GL_COLOR_BUFFER_BIT);
 
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
@@ -394,8 +386,8 @@ s32 main()
     ImGui::End();
 
     ImGui::Begin("Mouse");
-    ImGui::LabelText("Button", "%d", sMouse.button);
     ImGui::LabelText("State", "%d", sMouse.state);
+    ImGui::LabelText("Button", "%d", sMouse.button);
     ImGui::LabelText("Is Moving", "%d", sMouse.isMoving);
     ImGui::Checkbox("Invert X", &sMouse.invertX);
     ImGui::Checkbox("Invert Y", &sMouse.invertY);
@@ -404,16 +396,18 @@ s32 main()
     ImGui::LabelText("Delta Position", "{%3.3f, %3.3f}", sMouse.deltaPosition.x, sMouse.deltaPosition.y);
     ImGui::End();
 
-    TACS::DebugFoo();
+    ImGui::Begin("Keyboard");
+    ImGui::LabelText("State", "%d", sKeyboard.state);
+    ImGui::LabelText("Key", "%d", sKeyboard.key);
+    ImGui::End();
 
-    TACS::Debug(deltaTime);
+    TACS::Debug();
+    TRenderer::Debug();
+
     TACS::Update(deltaTime);
 
     if ((time - prevRenderTime) >= renderRate)
     {
-      glClearColor(0.f, 0.f, 0.f, 1.f);
-      glClear(GL_COLOR_BUFFER_BIT);
-
       TACS::Render(deltaTime);
 
       prevRenderTime = time;
