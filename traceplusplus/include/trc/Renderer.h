@@ -1,18 +1,36 @@
 #pragma once
 
 #include "Core.h"
+#include "VertexLayout.h"
+#include "ShaderLayout.h"
 
 struct TRenderer
 {
   struct TRenderJob
   {
-    u32 program;
-    u32 vao;
+    TVertexLayout* pVertexLayout = nullptr;
+    TShaderLayout* pShaderLayout = nullptr;
+
+    TRenderJob(
+      TVertexLayout* pVertexLayout,
+      TShaderLayout* pShaderLayout)
+      : pVertexLayout(pVertexLayout)
+      , pShaderLayout(pShaderLayout) {}
+    virtual ~TRenderJob() = default;
   };
 
-  inline static std::vector<TRenderJob> sLambertPass = {};
+  struct TLambertJobComp
+  {
+    auto operator ()(const TRenderJob& lhs, const TRenderJob& rhs) const
+    {
+      return lhs.pVertexLayout != rhs.pVertexLayout &&
+             lhs.pShaderLayout != rhs.pShaderLayout;
+    }
+  };
 
-  static void Submit(const TRenderJob& renderJob) { sLambertPass.emplace_back(renderJob); }
+  inline static std::set<TRenderJob, TLambertJobComp> sLambertPass = {};
+
+  static void Submit(const TRenderJob& renderJob) { sLambertPass.emplace(renderJob); }
   static void Render(const r32 deltaTime);
   static void Clear();
   static void Debug();

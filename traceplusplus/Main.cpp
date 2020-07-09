@@ -255,30 +255,7 @@ s32 main()
 
     void Render(const r32 deltaTime) const override
     {
-      TRenderer::Submit(TRenderer::TRenderJob{pShader->pShaderLayout->program, pMesh->pVertexLayout->vao});
-
-      glUseProgram(pShader->pShaderLayout->program);
-      glBindVertexArray(pMesh->pVertexLayout->vao);
-
-      r32m4 model = glm::identity<r32m4>();
-
-      model = glm::translate(model, pTransform->position);
-      model = glm::rotate(model, pTransform->rotation.x, { 1.f, 0.f, 0.f });
-      model = glm::rotate(model, pTransform->rotation.y, { 0.f, 1.f, 0.f });
-      model = glm::rotate(model, pTransform->rotation.z, { 0.f, 0.f, 1.f });
-      model = glm::scale(model, pTransform->scale);
-
-      s32 uDeltaTime = glGetUniformLocation(pShader->pShaderLayout->program, "uDeltaTime");
-      s32 uProjection = glGetUniformLocation(pShader->pShaderLayout->program, "uProjection");
-      s32 uView = glGetUniformLocation(pShader->pShaderLayout->program, "uView");
-      s32 uModel = glGetUniformLocation(pShader->pShaderLayout->program, "uModel");
-
-      glUniform1f(uDeltaTime, deltaTime);
-      glUniformMatrix4fv(uProjection, 1, 0, &pCamera->projectionTensor[0][0]);
-      glUniformMatrix4fv(uView, 1, 0, &pCamera->viewTensor[0][0]);
-      glUniformMatrix4fv(uModel, 1, 0, &model[0][0]);
-
-      glDrawElements(GL_TRIANGLES, pMesh->pVertexLayout->indexCount, GL_UNSIGNED_INT, 0);
+      TRenderer::Submit(TRenderer::TRenderJob{ pMesh->pVertexLayout, pShader->pShaderLayout });
     }
   };
 
@@ -355,23 +332,26 @@ s32 main()
     TACS::Attach<TRenderController>(pPortalActor, pPortalActor, pCameraActor);
   }
 
+  u32 targetFps = 60;
+  u32 frameCount = 0;
+  u32 currFps = 0;
+
   r32 time = 0.f;
-  r32 prevTime = 0.f;
   r32 deltaTime = 0.f;
 
-  s32 fps = 120;
-  r32 renderRate = 1.f / fps;
+  r32 prevMeasureTime = 0.f;
   r32 prevRenderTime = 0.f;
 
-  r32m4 projection = glm::identity<r32m4>();
-  r32m4 view = glm::identity<r32m4>();
-  r32m4 model = glm::identity<r32m4>();
+  r32 renderRate = 1.f / targetFps;
 
   while (sStatus > 0)
   {
+    frameCount++;
+    
     time = (r32)glfwGetTime();
-    deltaTime = time - prevTime;
-    renderRate = 1.f / fps;
+    deltaTime = time - prevRenderTime;
+
+    renderRate = 1.f / currFps;
 
     glClearColor(0.f, 0.f, 0.f, 1.f);
     glClear(GL_COLOR_BUFFER_BIT);
@@ -382,7 +362,8 @@ s32 main()
     ImGui::NewFrame();
 
     ImGui::Begin("Debug");
-    ImGui::SliderInt("Fps", &fps, 0, 120);
+    ImGui::SliderInt("Target Fps", (s32*)&targetFps, 0, 120);
+    ImGui::LabelText("Current Fps", "%d", currFps);
     ImGui::End();
 
     ImGui::Begin("Mouse");
@@ -404,15 +385,21 @@ s32 main()
     TRenderer::Debug();
     TACS::Debug();
 
-    TACS::Update(deltaTime);
+    if ((time - prevMeasureTime) >= 1.f)
+    {
+      prevMeasureTime = time;
+      currFps = glm::min(targetFps, frameCount);
+      frameCount = 0;
+    }
 
     if ((time - prevRenderTime) >= renderRate)
     {
+      prevRenderTime = time;
+
+      TACS::Update(deltaTime);
       TRenderer::Clear();
       TACS::Render(deltaTime);
       TRenderer::Render(deltaTime);
-
-      prevRenderTime = time;
     }
 
     sMouse.isMoving = 0;
@@ -424,8 +411,6 @@ s32 main()
 
     glfwSwapBuffers(pWindow);
     glfwPollEvents();
-
-    prevTime = time;
   }
 
   glfwTerminate();
