@@ -232,19 +232,19 @@ s32 main()
   if (!shaderLayout.CompileShaders(VertexDefault, FragmentDefault))
     return FAILED_LOADING_SHADER;
 
-  struct TRenderController : TACS::TComponent
+  struct TRenderController : ACS::TComponent
   {
     TTransform* pTransform = nullptr;
     TMesh*      pMesh      = nullptr;
     TShader*    pShader    = nullptr;
     TCamera*    pCamera    = nullptr;
 
-    TRenderController(TACS::TActor* pActor, TACS::TActor* pCameraActor)
+    TRenderController(ACS::TActor* pActor, ACS::TActor* pCameraActor)
     {
-      pMesh = (TMesh*)TACS::Obtain<TMesh>(pActor);
-      pTransform = (TTransform*)TACS::Obtain<TTransform>(pActor);
-      pShader = (TShader*)TACS::Obtain<TShader>(pActor);
-      pCamera = (TCamera*)TACS::Obtain<TCamera>(pCameraActor);
+      pMesh = (TMesh*)ACS::Obtain<TMesh>(pActor);
+      pTransform = (TTransform*)ACS::Obtain<TTransform>(pActor);
+      pShader = (TShader*)ACS::Obtain<TShader>(pActor);
+      pCamera = (TCamera*)ACS::Obtain<TCamera>(pCameraActor);
 
       pTransform->position = { (std::rand() % 100) - 50, (std::rand() % 100) - 50, (std::rand() % 100) - 50 };
       pTransform->rotation = { std::rand() % 360, std::rand() % 360, std::rand() % 360 };
@@ -259,15 +259,15 @@ s32 main()
     }
   };
 
-  struct TCameraController : TACS::TComponent
+  struct TCameraController : ACS::TComponent
   {
     TTransform* pTransform = nullptr;
     TCamera* pCamera = nullptr;
 
-    TCameraController(TACS::TActor* pActor)
+    TCameraController(ACS::TActor* pActor)
     {
-      pTransform = (TTransform*)TACS::Obtain<TTransform>(pActor);
-      pCamera = (TCamera*)TACS::Obtain<TCamera>(pActor);
+      pTransform = (TTransform*)ACS::Obtain<TTransform>(pActor);
+      pCamera = (TCamera*)ACS::Obtain<TCamera>(pActor);
     }
 
     void Update(const r32 deltaTime) override
@@ -318,18 +318,18 @@ s32 main()
     }
   };
 
-  auto pCameraActor = TACS::Create();
-  TACS::Attach<TTransform>(pCameraActor);
-  TACS::Attach<TCamera>(pCameraActor, TCamera::TProjection::Perspective);
-  TACS::Attach<TCameraController>(pCameraActor, pCameraActor);
+  auto pCameraActor = ACS::Create();
+  ACS::Attach<TTransform>(pCameraActor);
+  ACS::Attach<TCamera>(pCameraActor, TCamera::TProjection::Perspective);
+  ACS::Attach<TCameraController>(pCameraActor, pCameraActor);
 
   for (u32 i = 0; i < 256; i++)
   {
-    auto pPortalActor = TACS::Create();
-    TACS::Attach<TTransform>(pPortalActor);
-    TACS::Attach<TMesh>(pPortalActor, &quadLayout);
-    TACS::Attach<TShader>(pPortalActor, &shaderLayout);
-    TACS::Attach<TRenderController>(pPortalActor, pPortalActor, pCameraActor);
+    auto pPortalActor = ACS::Create();
+    ACS::Attach<TTransform>(pPortalActor);
+    ACS::Attach<TMesh>(pPortalActor, &quadLayout);
+    ACS::Attach<TShader>(pPortalActor, &shaderLayout);
+    ACS::Attach<TRenderController>(pPortalActor, pPortalActor, pCameraActor);
   }
 
   u32 targetFps = 60;
@@ -383,7 +383,7 @@ s32 main()
     ImGui::End();
 
     TRenderer::Debug();
-    TACS::Debug();
+    ACS::Debug();
 
     if ((time - prevMeasureTime) >= 1.f)
     {
@@ -396,9 +396,9 @@ s32 main()
     {
       prevRenderTime = time;
 
-      TACS::Update(deltaTime);
+      //ACS::Update(deltaTime);
       TRenderer::Clear();
-      TACS::Render(deltaTime);
+      //ACS::Render(deltaTime);
       TRenderer::Render(deltaTime);
     }
 

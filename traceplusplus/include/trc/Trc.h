@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Core.h"
+#include "FwDecl.h"
 #include "ACS.h"
 #include "Components.h"
 #include "Camera.h"

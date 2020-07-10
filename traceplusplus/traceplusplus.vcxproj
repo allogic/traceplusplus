@@ -450,6 +450,7 @@
     <ClInclude Include="include\trc\ACS.h" />
     <ClInclude Include="include\trc\Components.h" />
     <ClInclude Include="include\trc\Core.h" />
+    <ClInclude Include="include\trc\FwDecl.h" />
     <ClInclude Include="include\trc\Renderer.h" />
     <ClInclude Include="include\trc\ShaderLayout.h" />
     <ClInclude Include="include\trc\Shaders.h" />

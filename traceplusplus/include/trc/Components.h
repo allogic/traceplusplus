@@ -5,7 +5,7 @@
 #include "VertexLayout.h"
 #include "ShaderLayout.h"
 
-struct TTransform : TACS::TComponent
+struct TTransform : ACS::TComponent
 {
   r32v3 position = {};
   r32v3 rotation = {};
@@ -21,7 +21,7 @@ struct TTransform : TACS::TComponent
   virtual ~TTransform() = default;
 };
 
-struct TCamera : TACS::TComponent
+struct TCamera : ACS::TComponent
 {
   enum class TProjection : s32 { None = -1, Orthographic, Perspective };
 
@@ -49,7 +49,7 @@ struct TCamera : TACS::TComponent
   virtual void UpdateView(TTransform* pTransform);
 };
 
-struct TMesh : TACS::TComponent
+struct TMesh : ACS::TComponent
 {
   TVertexLayout* pVertexLayout = nullptr;
 
@@ -57,7 +57,7 @@ struct TMesh : TACS::TComponent
   virtual ~TMesh() = default;
 };
 
-struct TShader : TACS::TComponent
+struct TShader : ACS::TComponent
 {
   TShaderLayout* pShaderLayout = nullptr;
 

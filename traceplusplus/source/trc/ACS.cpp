@@ -3,15 +3,17 @@
 #include "trc/ACS.h"
 #include "trc/Components.h"
 
-void TACS::Debug()
+void ACS::Debug()
 {
   ImGui::Begin("ACS");
 
-  for (auto pActor : sActors)
+  for (const auto& [mask, components] : sActors)
   {
+    auto pActor = (TActor*)(mask.id >> 64).to_ullong();
+
     if (ImGui::TreeNodeEx(pActor, ImGuiTreeNodeFlags_DefaultOpen, "%p", pActor))
     {
-      for (auto [hash, pComponent] : *pActor->pComponents)
+      for (const auto& [hash, pComponent] : components)
       {
         if (ImGui::TreeNodeEx(pComponent, ImGuiTreeNodeFlags_DefaultOpen, "%p", pComponent))
         {
