@@ -449,7 +449,9 @@
     <ClInclude Include="include\KHR\khrplatform.h" />
     <ClInclude Include="include\trc\ACS.h" />
     <ClInclude Include="include\trc\Components.h" />
+    <ClInclude Include="include\trc\Controllers.h" />
     <ClInclude Include="include\trc\Core.h" />
+    <ClInclude Include="include\trc\Events.h" />
     <ClInclude Include="include\trc\FwDecl.h" />
     <ClInclude Include="include\trc\Renderer.h" />
     <ClInclude Include="include\trc\ShaderLayout.h" />
@@ -609,6 +611,7 @@
     <ClCompile Include="source\imgui_widgets.cpp" />
     <ClCompile Include="source\trc\ACS.cpp" />
     <ClCompile Include="source\trc\Components.cpp" />
+    <ClCompile Include="source\trc\Controllers.cpp" />
     <ClCompile Include="source\trc\Renderer.cpp" />
     <ClCompile Include="source\trc\ShaderLayout.cpp" />
     <ClCompile Include="source\trc\VertexLayout.cpp" />

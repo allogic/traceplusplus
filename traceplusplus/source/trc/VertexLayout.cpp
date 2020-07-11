@@ -2,18 +2,19 @@
 
 #include "trc/VertexLayout.h"
 
-TVertexLayout::TVertexLayout(u32 width, u32 height, u32 indexCount)
-  : width(width)
-  , height(height)
-  , vertexCount(width* height)
+TVertexLayout::TVertexLayout(u32 vertexCount, u32 indexCount)
+  : vertexCount(vertexCount)
   , indexCount(indexCount)
 {
-  pVertices = (r32*)std::calloc(vertexCount, sizeof(r32));
-  pIndices = (u32*)std::calloc(indexCount, sizeof(u32));
+  pVertices = new r32[vertexCount];
+  pIndices = new u32[indexCount];
 }
 
 TVertexLayout::~TVertexLayout()
 {
+  glDeleteBuffers(2, &pVbos[0]);
+  glDeleteVertexArrays(1, &vao);
+
   delete[] pVertices;
   delete[] pIndices;
 }
@@ -34,8 +35,10 @@ s32 TVertexLayout::CreateBuffers()
 
   glBindBuffer(GL_ARRAY_BUFFER, pVbos[0]);
   glBufferData(GL_ARRAY_BUFFER, vertexCount * sizeof(r32), pVertices, GL_STATIC_DRAW);
-  glVertexAttribPointer(0, 3, GL_FLOAT, 0, 0, 0);
-  glVertexAttribPointer(1, 2, GL_FLOAT, 0, 2 * sizeof(r32), (void*)(3 * sizeof(r32)));
+  //glVertexAttribPointer(0, 3, GL_FLOAT, 0, 0, 0);
+  //glVertexAttribPointer(1, 2, GL_FLOAT, 0, 2 * sizeof(r32), (void*)(3 * sizeof(r32)));
+  glVertexAttribPointer(0, 3, GL_FLOAT, 0, 5 * sizeof(r32), 0);
+  glVertexAttribPointer(1, 2, GL_FLOAT, 0, 5 * sizeof(r32), (void*)(3 * sizeof(r32)));
   glEnableVertexAttribArray(0);
   glEnableVertexAttribArray(1);
   glBindBuffer(0, 0);

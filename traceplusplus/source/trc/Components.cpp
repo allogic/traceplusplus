@@ -4,7 +4,7 @@ void TCamera::UpdateProjection(r32 aspect)
 {
   switch (projection)
   {
-  case TProjection::Perspective:  projectionTensor = glm::perspective(fov, aspect, 0.001f, 1000.f); return;
+  case TProjection::Perspective:  projectionTensor = glm::perspective(fov, aspect, near, far); return;
   case TProjection::Orthographic: projectionTensor = glm::ortho(-1.f, 1.f, -1.f, 1.f); return;
   }
 

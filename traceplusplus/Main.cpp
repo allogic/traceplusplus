@@ -8,9 +8,6 @@
 
 #include "trc/Trc.h"
 
-#include <string>
-#include <vector>
-
 struct TScreen
 {
   r32v2 screenSize  = {};
@@ -39,16 +36,6 @@ struct TMouse
     , invertY(invertY)
     , position(position) {}
   virtual ~TMouse() = default;
-};
-struct TKeyboard
-{
-  enum class TKeyState : s32 { None = -1, Release, Press, Hold };
-
-  TKeyState state    = TKeyState::None;
-  u32       key      = 0;
-
-  TKeyboard() = default;
-  virtual ~TKeyboard() = default;
 };
 
 #define GL_MAJOR 4
@@ -127,7 +114,6 @@ struct TKeyboard
 static s32       sStatus   = 1;
 static TScreen   sScreen   = { { 1280.f, 720.f } };
 static TMouse    sMouse    = { 1, 0, sScreen.screenSize / 2.f };
-static TKeyboard sKeyboard = {};
 
 s32 main()
 {
@@ -174,7 +160,7 @@ s32 main()
     });
   glfwSetWindowSizeCallback(pWindow, [](GLFWwindow* pWin, s32 width, s32 height) {
     sScreen.screenSize = { width, height };
-    sScreen.aspectRatio = (r32)width / height;
+    sScreen.aspectRatio = (width > 0 && height > 0) ? (r32)width / height : 1.f;
     glViewport(0, 0, width, height);
     });
   glfwSetCursorPosCallback(pWindow, [](GLFWwindow* pWin, r64 x, r64 y) {
@@ -184,47 +170,39 @@ s32 main()
     sMouse.isMoving = 1;
     });
   glfwSetMouseButtonCallback(pWindow, [](GLFWwindow* pWin, s32 button, s32 action, s32 mods) {
-    sMouse.state = (TMouse::TButtonState)action;
-    sMouse.button = (u32)button;
+    ACS::Event(&TMouseButtonEvent{ action, button });
     });
   glfwSetKeyCallback(pWindow, [](GLFWwindow* pWin, s32 key, s32 scanCode, s32 action, s32 mods) {
-    sKeyboard.state = (TKeyboard::TKeyState)action;
-    sKeyboard.key = (u32)key;
+    ACS::Event(&TKeyEvent{ action, key });
     });
 
-  TVertexLayout quadLayout(4, 5, 6);
-  quadLayout.pVertices[0] = -.5f;
-  quadLayout.pVertices[1] = -.5f;
-  quadLayout.pVertices[2] = 0.f;
-  quadLayout.pVertices[3] = 0.f;
-  quadLayout.pVertices[4] = 0.f;
+  u32 triNo = 150000;
+  u32 attrNo = 5;
+  u32 vertexNo = triNo * 3;
+  u32 indexNo = triNo * 3;
 
-  quadLayout.pVertices[5] = .5f;
-  quadLayout.pVertices[6] = -.5f;
-  quadLayout.pVertices[7] = 0.f;
-  quadLayout.pVertices[8] = 1.f;
-  quadLayout.pVertices[9] = 0.f;
+  TVertexLayout vertexLayout(vertexNo * attrNo, indexNo);
 
-  quadLayout.pVertices[10] = -.5f;
-  quadLayout.pVertices[11] = .5f;
-  quadLayout.pVertices[12] = 0.f;
-  quadLayout.pVertices[13] = 0.f;
-  quadLayout.pVertices[14] = 1.f;
+  for (u32 c = 0, v = 0, i = 0; v < vertexNo; c++, v += attrNo)
+  {
+    vertexLayout.pVertices[v + 0] = (std::rand() % 200) - 100.f;
+    vertexLayout.pVertices[v + 1] = (std::rand() % 200) - 100.f;
+    vertexLayout.pVertices[v + 2] = (std::rand() % 200) - 100.f;
 
-  quadLayout.pVertices[15] = .5f;
-  quadLayout.pVertices[16] = .5f;
-  quadLayout.pVertices[17] = 0.f;
-  quadLayout.pVertices[18] = 1.f;
-  quadLayout.pVertices[19] = 1.f;
+    vertexLayout.pVertices[v + 3] = 0.f;
+    vertexLayout.pVertices[v + 4] = 0.f;
 
-  quadLayout.pIndices[0] = 3;
-  quadLayout.pIndices[1] = 1;
-  quadLayout.pIndices[2] = 2;
-  quadLayout.pIndices[3] = 3;
-  quadLayout.pIndices[4] = 2;
-  quadLayout.pIndices[5] = 0;
+    if (c > 0 && c % 3 == 0)
+    {
+      vertexLayout.pIndices[i + 0] = c - 3 + 0;
+      vertexLayout.pIndices[i + 1] = c - 3 + 1;
+      vertexLayout.pIndices[i + 2] = c - 3 + 2;
 
-  if (!quadLayout.CreateBuffers())
+      i += 3;
+    }
+  }
+
+  if (!vertexLayout.CreateBuffers())
     return FAILED_CREATING_BUFFER;
 
   TShaderLayout shaderLayout;
@@ -232,115 +210,37 @@ s32 main()
   if (!shaderLayout.CompileShaders(VertexDefault, FragmentDefault))
     return FAILED_LOADING_SHADER;
 
-  struct TRenderController : ACS::TComponent
-  {
-    TTransform* pTransform = nullptr;
-    TMesh*      pMesh      = nullptr;
-    TShader*    pShader    = nullptr;
-    TCamera*    pCamera    = nullptr;
-
-    TRenderController(ACS::TActor* pActor, ACS::TActor* pCameraActor)
-    {
-      pMesh = (TMesh*)ACS::Obtain<TMesh>(pActor);
-      pTransform = (TTransform*)ACS::Obtain<TTransform>(pActor);
-      pShader = (TShader*)ACS::Obtain<TShader>(pActor);
-      pCamera = (TCamera*)ACS::Obtain<TCamera>(pCameraActor);
-
-      pTransform->position = { (std::rand() % 100) - 50, (std::rand() % 100) - 50, (std::rand() % 100) - 50 };
-      pTransform->rotation = { std::rand() % 360, std::rand() % 360, std::rand() % 360 };
-      pTransform->scale    = { std::rand() % 10, std::rand() % 10, 0.f };
-      //pTransform->position = { .5f, .5f, 1.f };
-      //pTransform->scale = { 1, 1, 0.f };
-    }
-
-    void Render(const r32 deltaTime) const override
-    {
-      TRenderer::Submit(TRenderer::TRenderJob{ pMesh->pVertexLayout, pShader->pShaderLayout });
-    }
-  };
-
-  struct TCameraController : ACS::TComponent
-  {
-    TTransform* pTransform = nullptr;
-    TCamera* pCamera = nullptr;
-
-    TCameraController(ACS::TActor* pActor)
-    {
-      pTransform = (TTransform*)ACS::Obtain<TTransform>(pActor);
-      pCamera = (TCamera*)ACS::Obtain<TCamera>(pActor);
-    }
-
-    void Update(const r32 deltaTime) override
-    {
-      if (sMouse.isMoving && sMouse.button == GLFW_MOUSE_BUTTON_RIGHT && sMouse.state == TMouse::TButtonState::Press)
-      {
-        pCamera->rotationDrag.x = sMouse.invertX ? -sMouse.deltaPosition.x : sMouse.deltaPosition.x; // aspect
-        pCamera->rotationDrag.y = sMouse.invertY ? -sMouse.deltaPosition.y : sMouse.deltaPosition.y;
-      }
-      else
-      {
-        pCamera->rotationDrag = { 0.f, 0.f };
-      }
-
-      if (sKeyboard.key == GLFW_KEY_W && (sKeyboard.state == TKeyboard::TKeyState::Press || sKeyboard.state == TKeyboard::TKeyState::Hold))
-        pTransform->position += pCamera->localForward * pCamera->positionSpeed * deltaTime;
-      if (sKeyboard.key == GLFW_KEY_S && (sKeyboard.state == TKeyboard::TKeyState::Press || sKeyboard.state == TKeyboard::TKeyState::Hold))
-        pTransform->position -= pCamera->localForward * pCamera->positionSpeed * deltaTime;
-
-      if (sKeyboard.key == GLFW_KEY_A && (sKeyboard.state == TKeyboard::TKeyState::Press || sKeyboard.state == TKeyboard::TKeyState::Hold))
-        pTransform->position += pCamera->localRight * pCamera->positionSpeed * deltaTime;
-      if (sKeyboard.key == GLFW_KEY_D && (sKeyboard.state == TKeyboard::TKeyState::Press || sKeyboard.state == TKeyboard::TKeyState::Hold))
-        pTransform->position -= pCamera->localRight * pCamera->positionSpeed * deltaTime;
-
-      if (glm::length(pCamera->rotationVelocity) > pCamera->rotationDeadzone)
-        pCamera->rotationVelocity += -pCamera->rotationVelocity * pCamera->rotationDecay * deltaTime;
-      else
-        pCamera->rotationVelocity = { 0.f, 0.f };
-
-      pCamera->rotationVelocity += pCamera->rotationDrag * pCamera->rotationSpeed * deltaTime;
-
-      if (pCamera->rotationVelocity.x > 180.f) pCamera->rotationVelocity.x = -180.f;
-      if (pCamera->rotationVelocity.x < -180.f) pCamera->rotationVelocity.x = 180.f;
-
-      if (pCamera->rotationVelocity.y > 180.f) pCamera->rotationVelocity.y = -180.f;
-      if (pCamera->rotationVelocity.y < -180.f) pCamera->rotationVelocity.y = 180.f;
-
-      r32m4 localRotation = glm::identity<r32m4>();
-      localRotation = glm::rotate(localRotation, glm::radians(pCamera->rotationVelocity.y), pCamera->localRight);
-      localRotation = glm::rotate(localRotation, glm::radians(pCamera->rotationVelocity.x), pCamera->localUp);
-
-      pCamera->localRight = localRotation * r32v4{ pCamera->localRight, 1.f };
-      pCamera->localUp = localRotation * r32v4{ pCamera->localUp, 1.f };
-      pCamera->localForward = localRotation * r32v4{ pCamera->localForward, 1.f };
-
-      pCamera->UpdateProjection(sScreen.aspectRatio);
-      pCamera->UpdateView(pTransform);
-    }
-  };
-
-  auto pCameraActor = ACS::Create();
+  auto pCameraActor = ACS::Create("Camera");
   ACS::Attach<TTransform>(pCameraActor);
-  ACS::Attach<TCamera>(pCameraActor, TCamera::TProjection::Perspective);
+  auto pCamera = ACS::Attach<TCamera>(pCameraActor, TCamera::TProjection::Perspective);
   ACS::Attach<TCameraController>(pCameraActor, pCameraActor);
 
-  for (u32 i = 0; i < 256; i++)
-  {
-    auto pPortalActor = ACS::Create();
-    ACS::Attach<TTransform>(pPortalActor);
-    ACS::Attach<TMesh>(pPortalActor, &quadLayout);
-    ACS::Attach<TShader>(pPortalActor, &shaderLayout);
-    ACS::Attach<TRenderController>(pPortalActor, pPortalActor, pCameraActor);
-  }
+  for (r32 i = 0; i < 16; i++)
+    for (r32 j = 0; j < 50; j++)
+    {
+      r32 deg = i * (360 / 16);
+      r32 ang = (deg * glm::pi<r32>() / 180);
+
+      r32 x = glm::sin(ang) * 1000.f;
+      r32 y = glm::cos(ang) * 1000.f;
+
+      auto pCubeBufferActor = ACS::Create("Cube Buffer");
+      auto pTransform = ACS::Attach<TTransform>(pCubeBufferActor);
+      pTransform->position = { x, y, j * 1000.f + 2000.f };
+      ACS::Attach<TMesh>(pCubeBufferActor, &vertexLayout);
+      ACS::Attach<TShader>(pCubeBufferActor, &shaderLayout); // TODO: Only attachment 'TLambertShader'
+      ACS::Attach<TRenderController>(pCubeBufferActor, pCubeBufferActor);
+    }
 
   u32 targetFps = 60;
   u32 frameCount = 0;
   u32 currFps = 0;
 
   r32 time = 0.f;
+  r32 prevTime = 0.f;
   r32 deltaTime = 0.f;
 
   r32 prevMeasureTime = 0.f;
-  r32 prevRenderTime = 0.f;
 
   r32 renderRate = 1.f / targetFps;
 
@@ -348,10 +248,18 @@ s32 main()
   {
     frameCount++;
     
+    prevTime = time;
     time = (r32)glfwGetTime();
-    deltaTime = time - prevRenderTime;
+    deltaTime = time - prevTime;
 
-    renderRate = 1.f / currFps;
+    // TODO: support framebuffer objects
+
+    if ((time - prevMeasureTime) >= 1.f)
+    {
+      prevMeasureTime = time;
+      currFps = glm::min(targetFps, frameCount);
+      frameCount = 0;
+    }
 
     glClearColor(0.f, 0.f, 0.f, 1.f);
     glClear(GL_COLOR_BUFFER_BIT);
@@ -377,30 +285,14 @@ s32 main()
     ImGui::LabelText("Delta Position", "{%3.3f, %3.3f}", sMouse.deltaPosition.x, sMouse.deltaPosition.y);
     ImGui::End();
 
-    ImGui::Begin("Keyboard");
-    ImGui::LabelText("State", "%d", sKeyboard.state);
-    ImGui::LabelText("Key", "%d", sKeyboard.key);
-    ImGui::End();
-
-    TRenderer::Debug();
+    Renderer::Debug();
     ACS::Debug();
 
-    if ((time - prevMeasureTime) >= 1.f)
-    {
-      prevMeasureTime = time;
-      currFps = glm::min(targetFps, frameCount);
-      frameCount = 0;
-    }
+    ACS::Update(deltaTime);
 
-    if ((time - prevRenderTime) >= renderRate)
-    {
-      prevRenderTime = time;
-
-      //ACS::Update(deltaTime);
-      TRenderer::Clear();
-      //ACS::Render(deltaTime);
-      TRenderer::Render(deltaTime);
-    }
+    Renderer::Flush();
+    ACS::Render();
+    Renderer::Render((TCamera*)pCamera);
 
     sMouse.isMoving = 0;
 

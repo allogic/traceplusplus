@@ -7,15 +7,15 @@ void ACS::Debug()
 {
   ImGui::Begin("ACS");
 
-  for (const auto& [mask, components] : sActors)
+  for (const auto& [key, components] : sActors)
   {
-    auto pActor = (TActor*)(mask.id >> 64).to_ullong();
+    auto pActor = (TActor*)(key.id >> 64).to_ullong();
 
-    if (ImGui::TreeNodeEx(pActor, ImGuiTreeNodeFlags_DefaultOpen, "%p", pActor))
+    if (ImGui::TreeNodeEx(pActor, 0, "%s", pActor->name))
     {
       for (const auto& [hash, pComponent] : components)
       {
-        if (ImGui::TreeNodeEx(pComponent, ImGuiTreeNodeFlags_DefaultOpen, "%p", pComponent))
+        if (ImGui::TreeNodeEx(pComponent, 0, "%s", pComponent->name))
         {
           if (hash == typeid(TTransform).hash_code())
           {
@@ -36,12 +36,17 @@ void ACS::Debug()
             ImGui::LabelText("Local Right", "{%3.3f, %3.3f, %3.3f}", pCamera->localRight.x, pCamera->localRight.y, pCamera->localRight.z);
             ImGui::LabelText("Local Up", "{%3.3f, %3.3f, %3.3f}", pCamera->localUp.x, pCamera->localUp.y, pCamera->localUp.z);
             ImGui::LabelText("Local Forward", "{%3.3f, %3.3f, %3.3f}", pCamera->localForward.x, pCamera->localForward.y, pCamera->localForward.z);
-            ImGui::SliderFloat("Position Speed", &pCamera->positionSpeed, 0.f, 10.f);
-            ImGui::SliderFloat("Rotation Speed", &pCamera->rotationSpeed, 0.f, 10.f);
-            ImGui::LabelText("Rotation Drag", "{%3.3f, %3.3f}", pCamera->rotationDrag.x, pCamera->rotationDrag.y);
-            ImGui::SliderFloat("Rotation Decay", &pCamera->rotationDecay, 0.f, 10.f);
-            ImGui::SliderFloat("Rotation Deadzone", &pCamera->rotationDeadzone, 0.f, 1.f);
-            ImGui::SliderFloat2("Rotation Velocity", &pCamera->rotationVelocity[0], -100.f, 100.f);
+          }
+          else if (hash == typeid(TMesh).hash_code())
+          {
+            TMesh* pMesh = (TMesh*)pComponent;
+
+            ImGui::LabelText("Vertex Count: ", "%d", pMesh->pVertexLayout->vertexCount);
+            ImGui::LabelText("Triangle Count: ", "%d", pMesh->pVertexLayout->indexCount / 3);
+          }
+          else
+          {
+            pComponent->Debug();
           }
 
           ImGui::TreePop();

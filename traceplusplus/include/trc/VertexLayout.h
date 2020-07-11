@@ -4,8 +4,6 @@
 
 struct TVertexLayout
 {
-  const u32  width          = 0;
-  const u32  height         = 0;
   const u32  vertexCount    = 0;
   const u32  indexCount     = 0;
   const u32  vertexLocation = 0;
@@ -15,7 +13,7 @@ struct TVertexLayout
   r32*       pVertices      = nullptr;
   u32*       pIndices       = nullptr;
 
-  TVertexLayout(u32 width = 0, u32 height = 0, u32 indexCount = 0);
+  TVertexLayout(u32 vertexCount, u32 indexCount);
   virtual ~TVertexLayout();
 
   s32 CreateBuffers();

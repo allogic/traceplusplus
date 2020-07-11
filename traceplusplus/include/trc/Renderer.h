@@ -1,11 +1,13 @@
 #pragma once
 
 #include "Core.h"
+#include "Components.h"
 #include "VertexLayout.h"
 #include "ShaderLayout.h"
 
-struct TRenderer
+class Renderer
 {
+public:
   struct TRenderJob
   {
     TVertexLayout* pVertexLayout = nullptr;
@@ -18,7 +20,12 @@ struct TRenderer
       , pShaderLayout(pShaderLayout) {}
     virtual ~TRenderJob() = default;
   };
+  struct TLambertTechnic
+  {
+    TTransform* pTransform = nullptr;
+  };
 
+private:
   struct TLambertJobComp
   {
     auto operator ()(const TRenderJob& lhs, const TRenderJob& rhs) const
@@ -28,10 +35,12 @@ struct TRenderer
     }
   };
 
-  inline static std::set<TRenderJob, TLambertJobComp> sLambertPass = {};
+  inline static std::set<TRenderJob, TLambertJobComp> sLambertPass     = {};
+  inline static std::vector<TLambertTechnic>          sLambertTechnics = {};
 
-  static void Submit(const TRenderJob& renderJob) { sLambertPass.emplace(renderJob); }
-  static void Render(const r32 deltaTime);
-  static void Clear();
+public:
+  static void Submit(const TRenderJob& job, const TLambertTechnic& technic);
+  static void Render(const TCamera* pCamera);
+  static void Flush();
   static void Debug();
 };

@@ -14,11 +14,11 @@ struct TTransform : ACS::TComponent
   TTransform(
     const r32v3& position = { 0.f, 0.f, 0.f },
     const r32v3& rotation = { 0.f, 0.f, 0.f },
-    const r32v3& scale    = { 0.f, 0.f, 0.f })
+    const r32v3& scale    = { 1.f, 1.f, 1.f })
     : position(position)
     , rotation(rotation)
-    , scale(scale) {}
-  virtual ~TTransform() = default;
+    , scale(scale)
+    , TComponent("Transform") {}
 };
 
 struct TCamera : ACS::TComponent
@@ -27,6 +27,8 @@ struct TCamera : ACS::TComponent
 
   TProjection projection       = TProjection::None;
   r32         fov              = glm::radians(45.f);
+  r32         near             = 0.001f;
+  r32         far              = 10000.f;
   const r32v3 right            = { 1.f, 0.f, 0.f };
   const r32v3 up               = { 0.f, 1.f, 0.f };
   const r32v3 forward          = { 0.f, 0.f, 1.f };
@@ -42,8 +44,9 @@ struct TCamera : ACS::TComponent
   r32m4       projectionTensor = glm::identity<r32m4>();
   r32m4       viewTensor       = glm::identity<r32m4>();
 
-  TCamera(TProjection projection) : projection(projection) {}
-  virtual ~TCamera() = default;
+  TCamera(TProjection projection)
+    : projection(projection)
+    , TComponent("Camera") {}
 
   virtual void UpdateProjection(r32 aspect);
   virtual void UpdateView(TTransform* pTransform);
@@ -53,14 +56,16 @@ struct TMesh : ACS::TComponent
 {
   TVertexLayout* pVertexLayout = nullptr;
 
-  TMesh(TVertexLayout* pVertexLayout) : pVertexLayout(pVertexLayout) {}
-  virtual ~TMesh() = default;
+  TMesh(TVertexLayout* pVertexLayout)
+    : pVertexLayout(pVertexLayout)
+    , TComponent("Mesh") {}
 };
 
 struct TShader : ACS::TComponent
 {
   TShaderLayout* pShaderLayout = nullptr;
 
-  TShader(TShaderLayout* pShaderLayout) : pShaderLayout(pShaderLayout) {}
-  virtual ~TShader() = default;
+  TShader(TShaderLayout* pShaderLayout)
+    : pShaderLayout(pShaderLayout)
+    , TComponent("Shader") {}
 };
