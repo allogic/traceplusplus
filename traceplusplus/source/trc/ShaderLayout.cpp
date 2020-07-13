@@ -4,13 +4,13 @@
 
 s32 TShaderLayout::CheckStatus(s32 shader, s32 type) const
 {
-  s32 compileInfo;
-  s32 compileInfoSize;
+  s32 compileInfo = 0;
+  s32 compileInfoSize = 0;
 
   glGetShaderiv(shader, type, &compileInfo);
   glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &compileInfoSize);
 
-  std::string log;
+  std::string log = "";
 
   if (compileInfoSize > 0)
   {

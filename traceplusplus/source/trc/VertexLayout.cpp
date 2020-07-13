@@ -35,8 +35,6 @@ s32 TVertexLayout::CreateBuffers()
 
   glBindBuffer(GL_ARRAY_BUFFER, pVbos[0]);
   glBufferData(GL_ARRAY_BUFFER, vertexCount * sizeof(r32), pVertices, GL_STATIC_DRAW);
-  //glVertexAttribPointer(0, 3, GL_FLOAT, 0, 0, 0);
-  //glVertexAttribPointer(1, 2, GL_FLOAT, 0, 2 * sizeof(r32), (void*)(3 * sizeof(r32)));
   glVertexAttribPointer(0, 3, GL_FLOAT, 0, 5 * sizeof(r32), 0);
   glVertexAttribPointer(1, 2, GL_FLOAT, 0, 5 * sizeof(r32), (void*)(3 * sizeof(r32)));
   glEnableVertexAttribArray(0);

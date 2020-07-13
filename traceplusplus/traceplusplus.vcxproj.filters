@@ -906,9 +906,6 @@
     <ClInclude Include="include\imgui_impl_opengl3.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\trc\Components.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="include\trc\ACS.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -927,9 +924,6 @@
     <ClInclude Include="include\trc\VertexLayout.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\trc\Renderer.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="include\trc\FwDecl.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -937,6 +931,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="include\trc\Controllers.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\trc\Scene.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\trc\Renderer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -1381,19 +1381,19 @@
     <ClCompile Include="source\trc\ACS.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="source\trc\Components.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="source\trc\ShaderLayout.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="source\trc\VertexLayout.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="source\trc\Renderer.cpp">
+    <ClCompile Include="source\trc\Controllers.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="source\trc\Controllers.cpp">
+    <ClCompile Include="source\trc\Scene.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="source\trc\Renderer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

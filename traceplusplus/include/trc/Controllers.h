@@ -2,15 +2,20 @@
 
 #include "Core.h"
 #include "ACS.h"
-#include "Components.h"
 #include "Events.h"
-#include "Renderer.h"
 
-struct TCameraController : ACS::TComponent
+struct TCameraController : ACS::Components::TController
 {
-  TTransform* pTransform = nullptr;
-  TCamera*    pCamera    = nullptr;
-  r32         deltaTime  = 0.f;
+  ACS::Components::TTransform* pTransform       = nullptr;
+  ACS::Components::TCamera*    pCamera          = nullptr;
+
+  r32                          deltaTime        = 0.f;
+  r32                          positionSpeed    = 7.0f;
+  r32                          rotationSpeed    = 1.5f;
+  r32v2                        rotationDrag     = {};
+  r32                          rotationDecay    = 15.0f;
+  r32                          rotationDeadzone = 0.001f;
+  r32v2                        rotationVelocity = {};
 
   TCameraController(ACS::TActor* pActor);
 
@@ -19,15 +24,14 @@ struct TCameraController : ACS::TComponent
   void Debug() override;
 };
 
-struct TRenderController : ACS::TComponent
+struct TCubeController : ACS::Components::TController
 {
-  TTransform* pTransform = nullptr;
-  TMesh*      pMesh      = nullptr;
-  TShader*    pShader    = nullptr;
-  r32v3       randRotVel = {};
+  ACS::Components::TTransform* pTransform = nullptr;
+  ACS::Components::TMesh*      pMesh      = nullptr;
 
-  TRenderController(ACS::TActor* pActor);
+  r32v3                        randRotVel = {};
+
+  TCubeController(ACS::TActor* pActor);
 
   void Update(const r32 deltaTime) override;
-  void Render() const override;
 };

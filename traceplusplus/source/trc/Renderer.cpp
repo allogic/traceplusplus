@@ -4,57 +4,58 @@
 
 #include "trc/Renderer.h"
 
-void Renderer::Submit(const TRenderJob& job, const TLambertTechnic& technic)
+void TRenderer::Submit(const TRenderJob& job, const TLambertTechnic& technic)
 {
-  sLambertPass.emplace(job);
-  sLambertTechnics.emplace_back(technic);
+  lambertPass.emplace(job);
+  lambertTechnics.emplace_back(technic);
 }
 
-void Renderer::Render(const TCamera* pCamera)
+void TRenderer::Render(const ACS::Components::TCamera* pCamera)
 {
-  for (const auto& job : sLambertPass)
+  for (const auto& job : lambertPass)
   {
     glUseProgram(job.pShaderLayout->program);
     glBindVertexArray(job.pVertexLayout->vao);
-    
+
     s32 uProjection = glGetUniformLocation(job.pShaderLayout->program, "uProjection");
     s32 uView = glGetUniformLocation(job.pShaderLayout->program, "uView");
     s32 uModel = glGetUniformLocation(job.pShaderLayout->program, "uModel");
 
-    glUniformMatrix4fv(uProjection, 1, 0, &pCamera->projectionTensor[0][0]);
-    glUniformMatrix4fv(uView, 1, 0, &pCamera->viewTensor[0][0]);
+    glUniformMatrix4fv(uProjection, 1, 0, &pCamera->projectionMatrix[0][0]);
+    glUniformMatrix4fv(uView, 1, 0, &pCamera->viewMatrix[0][0]);
 
-    r32m4 modelTensor = glm::identity<r32m4>();
-
-    for (const auto& technic : sLambertTechnics)
+    for (const auto& technic : lambertTechnics)
     {
-      modelTensor = glm::identity<r32m4>();
+      // TODO: mov matrix math to GPU
+      // only binds and uploads allowed
 
-      modelTensor = glm::translate(modelTensor, technic.pTransform->position);
-      modelTensor = glm::rotate(modelTensor, technic.pTransform->rotation.x, { 1.f, 0.f, 0.f });
-      modelTensor = glm::rotate(modelTensor, technic.pTransform->rotation.y, { 0.f, 1.f, 0.f });
-      modelTensor = glm::rotate(modelTensor, technic.pTransform->rotation.z, { 0.f, 0.f, 1.f });
-      modelTensor = glm::scale(modelTensor, technic.pTransform->scale);
+      technic.pTransform->modelMatrix = glm::identity<r32m4>();
 
-      glUniformMatrix4fv(uModel, 1, 0, &modelTensor[0][0]);
-      
+      technic.pTransform->modelMatrix = glm::translate(technic.pTransform->modelMatrix, technic.pTransform->position);
+      technic.pTransform->modelMatrix = glm::rotate(technic.pTransform->modelMatrix, technic.pTransform->rotation.x, technic.pTransform->localRight);
+      technic.pTransform->modelMatrix = glm::rotate(technic.pTransform->modelMatrix, technic.pTransform->rotation.y, technic.pTransform->localUp);
+      technic.pTransform->modelMatrix = glm::rotate(technic.pTransform->modelMatrix, technic.pTransform->rotation.z, technic.pTransform->localForward);
+      technic.pTransform->modelMatrix = glm::scale(technic.pTransform->modelMatrix, technic.pTransform->scale);
+
+      glUniformMatrix4fv(uModel, 1, 0, &technic.pTransform->modelMatrix[0][0]);
+
       glDrawElements(GL_TRIANGLES, job.pVertexLayout->indexCount, GL_UNSIGNED_INT, 0);
     }
   }
 }
 
-void Renderer::Flush()
+void TRenderer::Flush()
 {
-  sLambertPass.clear();
-  sLambertTechnics.clear();
+  lambertPass.clear();
+  lambertTechnics.clear();
 }
 
-void Renderer::Debug()
+void TRenderer::Debug()
 {
   ImGui::Begin("Renderer");
 
   ImGui::BeginGroup();
-  for (const auto& job : sLambertPass)
+  for (const auto& job : lambertPass)
   {
     if (ImGui::TreeNodeEx(&job, ImGuiTreeNodeFlags_DefaultOpen, "%p", &job))
     {

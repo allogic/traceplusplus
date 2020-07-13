@@ -1,13 +1,10 @@
 #pragma once
 
 #include "Core.h"
-#include "Components.h"
-#include "VertexLayout.h"
-#include "ShaderLayout.h"
+#include "ACS.h"
 
-class Renderer
+struct TRenderer : ACS::TInstance<TRenderer>
 {
-public:
   struct TRenderJob
   {
     TVertexLayout* pVertexLayout = nullptr;
@@ -22,25 +19,22 @@ public:
   };
   struct TLambertTechnic
   {
-    TTransform* pTransform = nullptr;
+    ACS::Components::TTransform* pTransform = nullptr;
   };
-
-private:
   struct TLambertJobComp
   {
     auto operator ()(const TRenderJob& lhs, const TRenderJob& rhs) const
     {
       return lhs.pVertexLayout != rhs.pVertexLayout &&
-             lhs.pShaderLayout != rhs.pShaderLayout;
+        lhs.pShaderLayout != rhs.pShaderLayout;
     }
   };
 
-  inline static std::set<TRenderJob, TLambertJobComp> sLambertPass     = {};
-  inline static std::vector<TLambertTechnic>          sLambertTechnics = {};
+  std::set<TRenderJob, TLambertJobComp> lambertPass     = {};
+  std::vector<TLambertTechnic>          lambertTechnics = {};
 
-public:
-  static void Submit(const TRenderJob& job, const TLambertTechnic& technic);
-  static void Render(const TCamera* pCamera);
-  static void Flush();
-  static void Debug();
+  void Submit(const TRenderJob& job, const TLambertTechnic& technic);
+  void Render(const ACS::Components::TCamera* pCamera);
+  void Flush();
+  void Debug();
 };

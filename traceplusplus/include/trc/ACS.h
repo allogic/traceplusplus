@@ -1,32 +1,21 @@
 #pragma once
 
 #include "Core.h"
+#include "VertexLayout.h"
+#include "ShaderLayout.h"
 
-class ACS
+namespace ACS
 {
-public:
-  struct TComponent;
-  struct TActor;
-
-private:
-  typedef std::map<std::size_t, TComponent*> TComponents;
-
-  struct TMutableKey
+  template<typename T>
+  struct TInstance
   {
-    mutable u128 id = 0;
+    inline static T* spInstance = nullptr;
 
-    TMutableKey(TActor* pActor) : id((u128)((p64)pActor) << 64) {}
-
-    inline auto operator < (const TMutableKey& key) const
-    {
-      return (id >> 64).to_ullong() < (key.id >> 64).to_ullong();
-    }
+    template<typename ... Args>
+    inline static T* Act(Args&&... arg) { if (!spInstance) { spInstance = new T(std::forward<Args>(arg)...); } return spInstance; }
+    inline static T* Act()              { if (!spInstance) { spInstance = new T; }                             return spInstance; }
   };
 
-  inline static std::map<TMutableKey, TComponents> sActors             = {};
-  inline static u32                                sComponentMaskCount = 0;
-
-public:
   struct TEvent
   {
     enum class TEventType : s32 { None = -1, Mouse, Keyboard, Window };
@@ -41,9 +30,6 @@ public:
 
     TComponent(const s8* name) : name(name) {}
 
-    virtual void Update(const r32 deltaTime) {}
-    virtual void Render() const {}
-    virtual void Event(TEvent& event) {}
     virtual void Debug() {}
   };
   struct TActor
@@ -53,93 +39,80 @@ public:
     TActor(const s8* name) : name(name) {}
   };
 
-  template<typename ... Args>
-  inline static TActor* Create(Args&&... arg)
+  namespace Components
   {
-    auto pActor = new TActor(std::forward<Args>(arg)...);
-    auto [_, rc] = sActors.emplace(TMutableKey{ pActor }, TComponents{});
-    return rc ? pActor : nullptr;
-  }
-
-  template<typename T, typename ... Args>
-  requires std::is_base_of_v<TComponent, T>
-  inline static T* Attach(TActor* pActor, Args&&... arg)
-  {
-    auto it = sActors.find(pActor);
-
-    if (it != sActors.end())
+    struct TTransform : ACS::TComponent
     {
-      it->first.id |= ToMaskBit<T>();
-      auto [it, rc] = it->second.emplace(typeid(T).hash_code(), new T(std::forward<Args>(arg)...));
-      return rc ? (T*)it->second : nullptr;
-    }
+      r32v3 position      = {};
+      r32v3 rotation      = {};
+      r32v3 scale         = {};
+      r32v3 right         = { 1.f, 0.f, 0.f };
+      r32v3 up            = { 0.f, 1.f, 0.f };
+      r32v3 forward       = { 0.f, 0.f, 1.f };
+      r32v3 localRight    = right;
+      r32v3 localUp       = up;
+      r32v3 localForward  = forward;
+      r32m4 modelMatrix   = glm::identity<r32m4>();
 
-    return nullptr;
-  }
-
-  template<typename T>
-  requires std::is_base_of_v<TComponent, T>
-  inline static T* Obtain(TActor* pActor)
-  {
-    auto it = sActors.find(pActor);
-
-    if (it != sActors.end())
+      TTransform(
+        const r32v3& position = { 0.f, 0.f, 0.f },
+        const r32v3& rotation = { 0.f, 0.f, 0.f },
+        const r32v3& scale    = { 1.f, 1.f, 1.f })
+        : position(position)
+        , rotation(rotation)
+        , scale(scale)
+        , TComponent("Transform") {}
+    };
+    struct TCamera : ACS::TComponent
     {
-      auto& components = it->second;
-      auto it = components.find(typeid(T).hash_code());
-      if (it != components.end()) return (T*)it->second;
-    }
+      enum class TProjection : s32 { None = -1, Orthographic, Perspective };
 
-    return nullptr;
-  }
+      TProjection projection       = TProjection::None;
+      r32         fov              = glm::radians(45.f);
+      r32         near             = 0.001f;
+      r32         far              = 10000.f;
+      r32m4       projectionMatrix = glm::identity<r32m4>();
+      r32m4       viewMatrix       = glm::identity<r32m4>();
 
-  inline static void Update(const r32 deltaTime)
-  {
-    for (const auto& [key, components] : sActors)
+      TCamera(TProjection projection)
+        : projection(projection)
+        , TComponent("Camera") {}
+
+      virtual void UpdateProjection(r32 aspect);
+      virtual void UpdateView(TTransform* pTransform);
+    };
+    struct TMesh : ACS::TComponent
     {
-      // TODO: Traverse only if key mask matches
+      TVertexLayout* pVertexLayout = nullptr;
 
-      for (const auto& [hash, pComponent] : components)
-        pComponent->Update(deltaTime);
-    }
-  }
-  inline static void Render()
-  {
-    for (const auto& [key, components] : sActors)
+      TMesh(TVertexLayout* pVertexLayout)
+        : pVertexLayout(pVertexLayout)
+        , TComponent("Mesh") {}
+    };
+    struct TMaterial : ACS::TComponent
     {
-      // TODO: Traverse only if key mask matches
 
-      for (const auto& [hash, pComponent] : components)
-        pComponent->Render();
-    }
-  }
-  inline static void Event(TEvent* pEvent)
-  {
-    for (const auto& [key, components] : sActors)
+    };
+    // implicit required types are 'TVertexLayout' && 'TShaderLayout' && 'TTransform'
+    // enable static_assert for missing components
+    // check static order missmatch
+    struct TLambertShader : ACS::TComponent
     {
-      // TODO: Traverse only if key mask matches
+      TTransform*    pTransform    = nullptr;
+      TMesh*         pMesh         = nullptr;
+      TShaderLayout* pShaderLayout = nullptr;
+      //TRenderer*     pRenderer     = nullptr;
 
-      for (const auto& [hash, pComponent] : components)
-        pComponent->Event(*pEvent);
-    }
-  }
-  static void Debug();
+      TLambertShader(TActor* pActor, TShaderLayout* pShaderLayout);
 
-private:
-  template<typename T>
-  requires std::is_base_of_v<TComponent, T>
-  inline static u64 ToMaskBit()
-  {
-    static std::map<std::size_t, u64> ids = {};
-
-    auto it = ids.find(typeid(T).hash_code());
-
-    if (it == ids.end())
+      void Render() const;
+    };
+    struct TController : TComponent
     {
-      auto [it, rc] = ids.emplace(typeid(T).hash_code(), 1 << sComponentMaskCount++);
-      return rc ? it->second : 1;
-    }
+      TController(const s8* name) : TComponent(name) {}
 
-    return it->second;
+      virtual void Update(const r32 deltaTime) {}
+      virtual void Event(TEvent& event) {}
+    };
   }
-};
+}

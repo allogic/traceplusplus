@@ -7,6 +7,7 @@
 #include "imgui_impl_opengl3.h"
 
 #include "trc/Trc.h"
+#include "trc/Controllers.h"
 
 struct TScreen
 {
@@ -155,6 +156,9 @@ s32 main()
   if (!ImGui_ImplOpenGL3_Init("#version 460 core"))
     return FAILED_IMGUI_IMPL_GL;
 
+  auto pScene = TScene::Act();
+  auto pRenderer = TRenderer::Act();
+
   glfwSetWindowCloseCallback(pWindow, [](GLFWwindow* pWin) {
     sStatus = 0;
     });
@@ -170,10 +174,10 @@ s32 main()
     sMouse.isMoving = 1;
     });
   glfwSetMouseButtonCallback(pWindow, [](GLFWwindow* pWin, s32 button, s32 action, s32 mods) {
-    ACS::Event(&TMouseButtonEvent{ action, button });
+    TScene::Act()->Event(&TMouseButtonEvent{ action, button });
     });
   glfwSetKeyCallback(pWindow, [](GLFWwindow* pWin, s32 key, s32 scanCode, s32 action, s32 mods) {
-    ACS::Event(&TKeyEvent{ action, key });
+    TScene::Act()->Event(&TKeyEvent{ action, key });
     });
 
   u32 triNo = 150000;
@@ -205,15 +209,15 @@ s32 main()
   if (!vertexLayout.CreateBuffers())
     return FAILED_CREATING_BUFFER;
 
-  TShaderLayout shaderLayout;
+  TShaderLayout shaderLayoutLambert;
 
-  if (!shaderLayout.CompileShaders(VertexDefault, FragmentDefault))
+  if (!shaderLayoutLambert.CompileShaders(VertexLambert, FragmentLambert))
     return FAILED_LOADING_SHADER;
 
-  auto pCameraActor = ACS::Create("Camera");
-  ACS::Attach<TTransform>(pCameraActor);
-  auto pCamera = ACS::Attach<TCamera>(pCameraActor, TCamera::TProjection::Perspective);
-  ACS::Attach<TCameraController>(pCameraActor, pCameraActor);
+  auto pCameraActor = pScene->Create("Camera");
+  pScene->Attach<ACS::Components::TTransform>(pCameraActor);
+  auto pCamera = pScene->Attach<ACS::Components::TCamera>(pCameraActor, ACS::Components::TCamera::TProjection::Perspective);
+  pScene->Attach<TCameraController>(pCameraActor, pCameraActor);
 
   for (r32 i = 0; i < 16; i++)
     for (r32 j = 0; j < 50; j++)
@@ -224,12 +228,12 @@ s32 main()
       r32 x = glm::sin(ang) * 1000.f;
       r32 y = glm::cos(ang) * 1000.f;
 
-      auto pCubeBufferActor = ACS::Create("Cube Buffer");
-      auto pTransform = ACS::Attach<TTransform>(pCubeBufferActor);
+      auto pCubeBufferActor = pScene->Create("Static Buffer");
+      auto pTransform = pScene->Attach<ACS::Components::TTransform>(pCubeBufferActor);
       pTransform->position = { x, y, j * 1000.f + 2000.f };
-      ACS::Attach<TMesh>(pCubeBufferActor, &vertexLayout);
-      ACS::Attach<TShader>(pCubeBufferActor, &shaderLayout); // TODO: Only attachment 'TLambertShader'
-      ACS::Attach<TRenderController>(pCubeBufferActor, pCubeBufferActor);
+      pScene->Attach<ACS::Components::TMesh>(pCubeBufferActor, &vertexLayout);
+      pScene->Attach<ACS::Components::TLambertShader>(pCubeBufferActor, pCubeBufferActor, &shaderLayoutLambert);
+      pScene->Attach<TCubeController, ACS::Components::TController>(pCubeBufferActor, pCubeBufferActor);
     }
 
   u32 targetFps = 60;
@@ -285,14 +289,14 @@ s32 main()
     ImGui::LabelText("Delta Position", "{%3.3f, %3.3f}", sMouse.deltaPosition.x, sMouse.deltaPosition.y);
     ImGui::End();
 
-    Renderer::Debug();
-    ACS::Debug();
+    pScene->Debug();
+    pRenderer->Debug();
 
-    ACS::Update(deltaTime);
+    pScene->Update<TCameraController, TCubeController>(deltaTime);
 
-    Renderer::Flush();
-    ACS::Render();
-    Renderer::Render((TCamera*)pCamera);
+    pRenderer->Flush();
+    pScene->Render();
+    pRenderer->Render(pCamera);
 
     sMouse.isMoving = 0;
 

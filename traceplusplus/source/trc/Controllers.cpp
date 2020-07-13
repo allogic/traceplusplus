@@ -2,39 +2,41 @@
 
 #include "imgui.h"
 
+#include "trc/Scene.h"
 #include "trc/Controllers.h"
 
 TCameraController::TCameraController(ACS::TActor* pActor)
-  : TComponent("Camera Controller")
+  : ACS::Components::TController("Camera Controller")
+  , pTransform(TScene::Act()->Obtain<ACS::Components::TTransform>(pActor))
+  , pCamera(TScene::Act()->Obtain<ACS::Components::TCamera>(pActor))
 {
-  pTransform = ACS::Obtain<TTransform>(pActor);
-  pCamera = ACS::Obtain<TCamera>(pActor);
+
 }
 
 void TCameraController::Update(const r32 deltaTime)
 {
   this->deltaTime = deltaTime;
 
-  if (glm::length(pCamera->rotationVelocity) > pCamera->rotationDeadzone)
-    pCamera->rotationVelocity += -pCamera->rotationVelocity * pCamera->rotationDecay * deltaTime;
+  if (glm::length(rotationVelocity) > rotationDeadzone)
+    rotationVelocity += -rotationVelocity * rotationDecay * deltaTime;
   else
-    pCamera->rotationVelocity = { 0.f, 0.f };
+    rotationVelocity = { 0.f, 0.f };
 
-  pCamera->rotationVelocity += pCamera->rotationDrag * pCamera->rotationSpeed * deltaTime;
+  rotationVelocity += rotationDrag * rotationSpeed * deltaTime;
 
-  if (pCamera->rotationVelocity.x > 180.f) pCamera->rotationVelocity.x = -180.f;
-  if (pCamera->rotationVelocity.x < -180.f) pCamera->rotationVelocity.x = 180.f;
+  if (rotationVelocity.x > 180.f) rotationVelocity.x = -180.f;
+  if (rotationVelocity.x < -180.f) rotationVelocity.x = 180.f;
 
-  if (pCamera->rotationVelocity.y > 180.f) pCamera->rotationVelocity.y = -180.f;
-  if (pCamera->rotationVelocity.y < -180.f) pCamera->rotationVelocity.y = 180.f;
+  if (rotationVelocity.y > 180.f) rotationVelocity.y = -180.f;
+  if (rotationVelocity.y < -180.f) rotationVelocity.y = 180.f;
 
   r32m4 localRotation = glm::identity<r32m4>();
-  localRotation = glm::rotate(localRotation, glm::radians(pCamera->rotationVelocity.y), pCamera->localRight);
-  localRotation = glm::rotate(localRotation, glm::radians(pCamera->rotationVelocity.x), pCamera->localUp);
+  localRotation = glm::rotate(localRotation, glm::radians(rotationVelocity.y), pTransform->localRight);
+  localRotation = glm::rotate(localRotation, glm::radians(rotationVelocity.x), pTransform->localUp);
 
-  pCamera->localRight = localRotation * r32v4{ pCamera->localRight, 1.f };
-  pCamera->localUp = localRotation * r32v4{ pCamera->localUp, 1.f };
-  pCamera->localForward = localRotation * r32v4{ pCamera->localForward, 1.f };
+  pTransform->localRight = localRotation * r32v4{ pTransform->localRight, 1.f };
+  pTransform->localUp = localRotation * r32v4{ pTransform->localUp, 1.f };
+  pTransform->localForward = localRotation * r32v4{ pTransform->localForward, 1.f };
 
   // TODO: 'Renderer::Camera' or 'ACS::Obtain<TCamera>'
   // TODO: even better turn everything into a component
@@ -49,17 +51,17 @@ void TCameraController::Event(ACS::TEvent& event)
   {
   case ACS::TEvent::TEventType::Keyboard:
   {
-    auto keyEvent = reinterpret_cast<TKeyEvent&>(event);
+    auto keyEvent = (TKeyEvent&)(event);
 
     if (keyEvent.key == GLFW_KEY_W && (keyEvent.action == GLFW_PRESS || keyEvent.action == GLFW_REPEAT))
-      pTransform->position += pCamera->localForward * pCamera->positionSpeed * deltaTime;
+      pTransform->position += pTransform->localForward * positionSpeed * deltaTime;
     if (keyEvent.key == GLFW_KEY_S && (keyEvent.action == GLFW_PRESS || keyEvent.action == GLFW_REPEAT))
-      pTransform->position -= pCamera->localForward * pCamera->positionSpeed * deltaTime;
+      pTransform->position -= pTransform->localForward * positionSpeed * deltaTime;
 
     if (keyEvent.key == GLFW_KEY_A && (keyEvent.action == GLFW_PRESS || keyEvent.action == GLFW_REPEAT))
-      pTransform->position += pCamera->localRight * pCamera->positionSpeed * deltaTime;
+      pTransform->position += pTransform->localRight * positionSpeed * deltaTime;
     if (keyEvent.key == GLFW_KEY_D && (keyEvent.action == GLFW_PRESS || keyEvent.action == GLFW_REPEAT))
-      pTransform->position -= pCamera->localRight * pCamera->positionSpeed * deltaTime;
+      pTransform->position -= pTransform->localRight * positionSpeed * deltaTime;
   }
   break;
   case ACS::TEvent::TEventType::Mouse:
@@ -75,7 +77,7 @@ void TCameraController::Event(ACS::TEvent& event)
     }
     else
     {
-      pCamera->rotationDrag = { 0.f, 0.f };
+      rotationDrag = { 0.f, 0.f };
     }
   }
   break;
@@ -84,33 +86,23 @@ void TCameraController::Event(ACS::TEvent& event)
 
 void TCameraController::Debug()
 {
-  ImGui::SliderFloat("Position Speed", &pCamera->positionSpeed, 0.f, 10.f);
-  ImGui::SliderFloat("Rotation Speed", &pCamera->rotationSpeed, 0.f, 10.f);
-  ImGui::LabelText("Rotation Drag", "{%3.3f, %3.3f}", pCamera->rotationDrag.x, pCamera->rotationDrag.y);
-  ImGui::SliderFloat("Rotation Decay", &pCamera->rotationDecay, 0.f, 10.f);
-  ImGui::SliderFloat("Rotation Deadzone", &pCamera->rotationDeadzone, 0.f, 1.f);
-  ImGui::LabelText("Rotation Velocity", "{%3.3f, %3.3f}", &pCamera->rotationVelocity.x, &pCamera->rotationVelocity.y);
+  ImGui::SliderFloat("Position Speed", &positionSpeed, 0.f, 10.f);
+  ImGui::SliderFloat("Rotation Speed", &rotationSpeed, 0.f, 10.f);
+  ImGui::LabelText("Rotation Drag", "{%3.3f, %3.3f}", rotationDrag.x, rotationDrag.y);
+  ImGui::SliderFloat("Rotation Decay", &rotationDecay, 0.f, 10.f);
+  ImGui::SliderFloat("Rotation Deadzone", &rotationDeadzone, 0.f, 1.f);
+  ImGui::LabelText("Rotation Velocity", "{%3.3f, %3.3f}", &rotationVelocity.x, &rotationVelocity.y);
 }
 
-TRenderController::TRenderController(ACS::TActor* pActor)
-  : TComponent("Render Controller")
+TCubeController::TCubeController(ACS::TActor* pActor)
+  : ACS::Components::TController("Cube Controller")
+  , pMesh(TScene::Act()->Obtain<ACS::Components::TMesh>(pActor))
+  , pTransform(TScene::Act()->Obtain<ACS::Components::TTransform>(pActor))
 {
-  pMesh = ACS::Obtain<TMesh>(pActor);
-  pTransform = ACS::Obtain<TTransform>(pActor);
-  pShader = ACS::Obtain<TShader>(pActor);
-
   randRotVel = r32v3{ 1 + std::rand() % 5, 1 + std::rand() % 5, 1 + std::rand() % 5 };
 }
 
-void TRenderController::Update(const r32 deltaTime)
+void TCubeController::Update(const r32 deltaTime)
 {
   pTransform->rotation += randRotVel * deltaTime;
-}
-
-void TRenderController::Render() const
-{
-  auto job = Renderer::TRenderJob{ pMesh->pVertexLayout, pShader->pShaderLayout };
-  auto technic = Renderer::TLambertTechnic{ pTransform };
-
-  Renderer::Submit(job, technic);
 }
