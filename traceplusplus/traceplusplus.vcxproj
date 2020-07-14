@@ -456,6 +456,7 @@
     <ClInclude Include="include\trc\Scene.h" />
     <ClInclude Include="include\trc\ShaderLayout.h" />
     <ClInclude Include="include\trc\Shaders.h" />
+    <ClInclude Include="include\trc\SSBO.h" />
     <ClInclude Include="include\trc\Trc.h" />
     <ClInclude Include="include\trc\VertexLayout.h" />
     <ClInclude Include="Renderer.h" />
@@ -614,6 +615,7 @@
     <ClCompile Include="source\trc\Renderer.cpp" />
     <ClCompile Include="source\trc\Scene.cpp" />
     <ClCompile Include="source\trc\ShaderLayout.cpp" />
+    <ClCompile Include="source\trc\SSBO.cpp" />
     <ClCompile Include="source\trc\VertexLayout.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

@@ -180,7 +180,7 @@ s32 main()
     TScene::Act()->Event(&TKeyEvent{ action, key });
     });
 
-  u32 triNo = 150000;
+  u32 triNo = 100;
   u32 attrNo = 5;
   u32 vertexNo = triNo * 3;
   u32 indexNo = triNo * 3;
@@ -209,10 +209,16 @@ s32 main()
   if (!vertexLayout.CreateBuffers())
     return FAILED_CREATING_BUFFER;
 
+  TShaderLayout shaderLayoutTransformations;
   TShaderLayout shaderLayoutLambert;
+
+  if (!shaderLayoutTransformations.CompileShaders(VertexTransformations, FragmentTransformations))
+    return FAILED_LOADING_SHADER;
 
   if (!shaderLayoutLambert.CompileShaders(VertexLambert, FragmentLambert))
     return FAILED_LOADING_SHADER;
+
+  // TODO: general ACS improvements!
 
   auto pCameraActor = pScene->Create("Camera");
   pScene->Attach<ACS::Components::TTransform>(pCameraActor);
@@ -232,6 +238,9 @@ s32 main()
       auto pTransform = pScene->Attach<ACS::Components::TTransform>(pCubeBufferActor);
       pTransform->position = { x, y, j * 1000.f + 2000.f };
       pScene->Attach<ACS::Components::TMesh>(pCubeBufferActor, &vertexLayout);
+      // TODO: ShaderStage.h -> each stage executes a variety of different shaders
+      // in order to encapsulate multi pass shader algorithms into objects
+      pScene->Attach<ACS::Components::TTransformationShader>(pCubeBufferActor, pCubeBufferActor, &shaderLayoutTransformations);
       pScene->Attach<ACS::Components::TLambertShader>(pCubeBufferActor, pCubeBufferActor, &shaderLayoutLambert);
       pScene->Attach<TCubeController, ACS::Components::TController>(pCubeBufferActor, pCubeBufferActor);
     }
@@ -289,19 +298,40 @@ s32 main()
     ImGui::LabelText("Delta Position", "{%3.3f, %3.3f}", sMouse.deltaPosition.x, sMouse.deltaPosition.y);
     ImGui::End();
 
+    MEASURE_BEGIN(SceneDebug);
     pScene->Debug();
-    pRenderer->Debug();
+    MEASURE_END(SceneDebug);
 
-    pScene->Update<TCameraController, TCubeController>(deltaTime);
+    MEASURE_BEGIN(RenderDebug);
+    pRenderer->Debug();
+    MEASURE_END(RenderDebug);
+
+    MEASURE_BEGIN(SceneUpdate);
+    pScene->Update(deltaTime);
+    MEASURE_END(SceneUpdate);
 
     pRenderer->Flush();
-    pScene->Render();
-    pRenderer->Render(pCamera);
 
-    sMouse.isMoving = 0;
+    MEASURE_BEGIN(SceneRender);
+    pScene->Render();
+    MEASURE_END(SceneRender);
+
+    MEASURE_BEGIN(RenderRender);
+    pRenderer->Render(pCamera);
+    MEASURE_END(RenderRender);
+
+    ImGui::Begin("Measurements");
+    ImGui::LabelText("SceneDebug", "%d", SceneDebugDuration);
+    ImGui::LabelText("RenderDebug", "%d", RenderDebugDuration);
+    ImGui::LabelText("SceneUpdate", "%d", SceneUpdateDuration);
+    ImGui::LabelText("SceneRender", "%d", SceneRenderDuration);
+    ImGui::LabelText("RenderRender", "%d", RenderRenderDuration);
+    ImGui::End();
 
     ImGui::EndFrame();
     ImGui::Render();
+
+    sMouse.isMoving = 0;
 
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 

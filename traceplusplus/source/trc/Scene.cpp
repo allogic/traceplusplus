@@ -2,15 +2,25 @@
 
 #include "trc/Scene.h"
 
+void TScene::Update(const r32 deltaTime)
+{
+  for (const auto& [key, components] : actors)
+    for (const auto& [hash, pComponent] : components)
+      pComponent->Update(deltaTime);
+}
+
+void TScene::Render()
+{
+  for (const auto& [key, components] : actors)
+    for (const auto& [hash, pComponent] : components)
+      pComponent->Render();
+}
+
 void TScene::Event(ACS::TEvent* pEvent)
 {
   for (const auto& [key, components] : actors)
-  {
-    // TODO: Traverse only if key mask matches
-
-    //for (const auto& [hash, pComponent] : components)
-    //  pComponent->Event(*pEvent);
-  }
+    for (const auto& [hash, pComponent] : components)
+      pComponent->Event(*pEvent);
 }
 
 void TScene::Debug()
@@ -69,18 +79,4 @@ void TScene::Debug()
   }
 
   ImGui::End();
-}
-
-void TScene::Render()
-{
-  const u64 mask = Register<ACS::Components::TLambertShader>();
-
-  for (const auto& [key, components] : actors)
-    if ((key.id & (u128)0xFFFFFFFF).to_ullong() & mask)
-    {
-      auto compIt = components.find(mask);
-
-      if (compIt != components.end())
-        ((ACS::Components::TLambertShader*)compIt->second)->Render();
-    }
 }

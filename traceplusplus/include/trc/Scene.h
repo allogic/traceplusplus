@@ -93,23 +93,7 @@ struct TScene : ACS::TInstance<TScene>
     return nullptr;
   }
 
-  template<typename ... T>
-  requires (std::is_base_of_v<ACS::Components::TController, T>, ...)
-  void Update(const r32 deltaTime)
-  {
-    const u64 mask = RegisterFor<ACS::Components::TController>();
-
-    for (const auto& [key, components] : actors)
-      if ((key.id & (u128)0xFFFFFFFF).to_ullong() & mask)
-      {
-        // TODO: bit mask fold expression loop?
-        auto compIt = components.find(mask);
-
-        if (compIt != components.end())
-          ((ACS::Components::TController*)compIt->second)->Update(deltaTime);
-      }
-  }
-
+  void Update(const r32 deltaTime);
   void Event(ACS::TEvent* pEvent);
   void Debug();
   void Render();

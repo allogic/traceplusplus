@@ -31,6 +31,9 @@ namespace ACS
     TComponent(const s8* name) : name(name) {}
 
     virtual void Debug() {}
+    virtual void Update(const r32 deltaTime) {}
+    virtual void Render() const {}
+    virtual void Event(TEvent& event) {}
   };
   struct TActor
   {
@@ -93,26 +96,29 @@ namespace ACS
     {
 
     };
-    // implicit required types are 'TVertexLayout' && 'TShaderLayout' && 'TTransform'
-    // enable static_assert for missing components
-    // check static order missmatch
+    struct TTransformationShader : ACS::TComponent
+    {
+      TTransform*    pTransform = nullptr;
+      TMesh*         pMesh = nullptr;
+      TShaderLayout* pShaderLayout = nullptr;
+
+      TTransformationShader(TActor* pActor, TShaderLayout* pShaderLayout);
+
+      void Render() const override;
+    };
     struct TLambertShader : ACS::TComponent
     {
       TTransform*    pTransform    = nullptr;
       TMesh*         pMesh         = nullptr;
       TShaderLayout* pShaderLayout = nullptr;
-      //TRenderer*     pRenderer     = nullptr;
 
       TLambertShader(TActor* pActor, TShaderLayout* pShaderLayout);
 
-      void Render() const;
+      void Render() const override;
     };
     struct TController : TComponent
     {
       TController(const s8* name) : TComponent(name) {}
-
-      virtual void Update(const r32 deltaTime) {}
-      virtual void Event(TEvent& event) {}
     };
   }
 }

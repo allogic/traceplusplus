@@ -16,6 +16,7 @@
 #include <concepts>
 #include <queue>
 #include <bitset>
+#include <chrono>
 
 typedef bool                   b8;
 
@@ -39,3 +40,6 @@ typedef glm::fvec3             r32v3;
 typedef glm::fvec4             r32v4;
 
 typedef glm::fmat4             r32m4;
+
+#define MEASURE_BEGIN(NAME) auto NAME##Start = std::chrono::high_resolution_clock::now();
+#define MEASURE_END(NAME) auto NAME##Duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - NAME##Start).count();
