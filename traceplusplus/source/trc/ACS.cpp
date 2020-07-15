@@ -22,30 +22,16 @@ void ACS::Components::TCamera::UpdateView(TTransform* pTransform)
   viewMatrix = glm::lookAt(pTransform->position, pTransform->position + pTransform->localForward, pTransform->localUp);
 }
 
-ACS::Components::TTransformationShader::TTransformationShader(TActor* pActor, TShaderLayout* pShaderLayout)
+ACS::Components::TShader::TShader(TActor* pActor, ShaderLayout::TShaderProgram* pShader)
   : TComponent("Lambert Shader")
   , pTransform(TScene::Act()->Obtain<TTransform>(pActor))
   , pMesh(TScene::Act()->Obtain<TMesh>(pActor))
-  , pShaderLayout(pShaderLayout) {}
+  , pShader(pShader) {}
 
-void ACS::Components::TTransformationShader::Render() const
+void ACS::Components::TShader::Render() const
 {
   TRenderer::Act()->Submit(
-    TRenderer::TRenderJob{ pMesh->pVertexLayout, pShaderLayout },
-    TRenderer::TTransfomrationTechnic{ pTransform }
-  );
-}
-
-ACS::Components::TLambertShader::TLambertShader(TActor* pActor, TShaderLayout* pShaderLayout)
-  : TComponent("Lambert Shader")
-  , pTransform(TScene::Act()->Obtain<TTransform>(pActor))
-  , pMesh(TScene::Act()->Obtain<TMesh>(pActor))
-  , pShaderLayout(pShaderLayout) {}
-
-void ACS::Components::TLambertShader::Render() const
-{
-  TRenderer::Act()->Submit(
-    TRenderer::TRenderJob{ pMesh->pVertexLayout, pShaderLayout },
+    TRenderer::TRenderJob{ pMesh->pVertexLayout, pShader },
     TRenderer::TLambertTechnic{ pTransform }
   );
 }

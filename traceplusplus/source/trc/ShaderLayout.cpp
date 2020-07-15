@@ -1,8 +1,8 @@
-#include "trc/ShaderLayout.h"
-
 #include "glad/glad.h"
 
-s32 TShaderLayout::CheckStatus(s32 shader, s32 type) const
+#include "trc/ShaderLayout.h"
+
+s32 ShaderLayout::CheckStatus(s32 shader, s32 type)
 {
   s32 compileInfo = 0;
   s32 compileInfoSize = 0;
@@ -26,10 +26,9 @@ s32 TShaderLayout::CheckStatus(s32 shader, s32 type) const
   return 1;
 }
 
-s32 TShaderLayout::LinkShaders() const
+s32 ShaderLayout::LinkShader(u32 program, u32 shader)
 {
-  glAttachShader(program, vertexShader);
-  glAttachShader(program, fragmentShader);
+  glAttachShader(program, shader);
 
   glLinkProgram(program);
 
@@ -39,7 +38,7 @@ s32 TShaderLayout::LinkShaders() const
   return 1;
 }
 
-s32 TShaderLayout::CompileShader(u32 shader, const s8* pSource) const
+s32 ShaderLayout::CompileShader(u32 shader, const s8* pSource)
 {
   glShaderSource(shader, 1, &pSource, nullptr);
   glCompileShader(shader);
@@ -50,22 +49,42 @@ s32 TShaderLayout::CompileShader(u32 shader, const s8* pSource) const
   return 1;
 }
 
-s32 TShaderLayout::CompileShaders(const s8* pVertexSource, const s8* pFragmentSource)
-{
-  vertexShader = glCreateShader(GL_VERTEX_SHADER);
-
-  if (!CompileShader(vertexShader, pVertexSource))
-    return 0;
-
-  fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-
-  if (!CompileShader(fragmentShader, pFragmentSource))
-    return 0;
-
-  program = glCreateProgram();
-
-  if (!LinkShaders())
-    return 0;
-
-  return 1;
-}
+//s32 ShaderLayout::MakeProgram()
+//{
+//  u32 program = glCreateProgram();
+//
+//  if (!program) return 0;
+//
+//  switch (T)
+//  {
+//  case TShaderType::StandardShader:
+//    u32 vertexShader = glCreateShader(GL_VERTEX_SHADER);
+//    u32 fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+//
+//    if (!(
+//      vertexShader &&
+//      fragmentShader))
+//    {
+//      glDeleteProgram(program);
+//      return 0;
+//    }
+//
+//    //if (!(
+//    //  CompileShader(vertexShader, pVertexSource) &&
+//    //  CompileShader(fragmentShader, pFragmentShader) &&
+//    //  LinkShader(program, vertexShader) &&
+//    //  LinkShader(program, fragmentShader)))
+//    //{
+//    //  glDeleteShader(vertexShader);
+//    //  glDeleteShader(fragmentShader);
+//    //  glDeleteProgram(program);
+//    //  return 0;
+//    //}
+//    break;
+//  case TShaderType::ComputeShader:
+//    //u32 vertexShader = glCreateShader(GL_COMPUTE_SHADER);
+//    break;
+//  }
+//
+//  return 1;
+//}

@@ -909,22 +909,13 @@
     <ClInclude Include="include\trc\ACS.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\trc\Shaders.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="include\trc\Core.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="include\trc\Trc.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\trc\ShaderLayout.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="include\trc\VertexLayout.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="include\trc\FwDecl.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="include\trc\Events.h">
@@ -940,6 +931,24 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="include\trc\SSBO.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\trc\ComputeShader.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\trc\StandardShader.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\trc\StandardShaders.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\trc\ComputeShaders.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\trc\ShaderLayout.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\trc\Utils.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

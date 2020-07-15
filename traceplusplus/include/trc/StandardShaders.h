@@ -1,31 +1,9 @@
 #pragma once
 
 #include "Core.h"
+#include "Utils.h"
 
-constexpr static const s8 VertexTransformations[] = R"glsl(
-#version 460 core
-
-layout (std430, binding = 0) buffer bTransformation
-{ 
-  vec4 model;
-};
-
-void main()
-{
-
-}
-)glsl";
-
-constexpr static const s8 FragmentTransformations[] = R"glsl(
-#version 460 core
-
-void main()
-{
-  
-}
-)glsl";
-
-constexpr static const s8 VertexLambert[] = R"glsl(
+using TLambertVertexSource = TConstexprStringView<decltype(R"glsl(
 #version 460 core
 
 layout (location = 0) in vec3 lPosition;
@@ -43,9 +21,9 @@ void main()
 {
   gl_Position = uProjection * uView * model * vec4(lPosition, 1.);
 }
-)glsl";
+)glsl"_cexpr)>;
 
-constexpr static const s8 FragmentLambert[] = R"glsl(
+using TLambertFragmentSource = TConstexprStringView<decltype(R"glsl(
 #version 460 core
 
 out vec4 FragColor;
@@ -54,4 +32,4 @@ void main()
 {
   FragColor = vec4(1., 1., 0., 1.);
 }
-)glsl";
+)glsl"_cexpr)>;

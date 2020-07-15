@@ -96,23 +96,13 @@ namespace ACS
     {
 
     };
-    struct TTransformationShader : ACS::TComponent
+    struct TShader : ACS::TComponent
     {
-      TTransform*    pTransform = nullptr;
-      TMesh*         pMesh = nullptr;
-      TShaderLayout* pShaderLayout = nullptr;
+      TTransform*                   pTransform  = nullptr;
+      TMesh*                        pMesh       = nullptr;
+      ShaderLayout::TShaderProgram* pShader     = nullptr;
 
-      TTransformationShader(TActor* pActor, TShaderLayout* pShaderLayout);
-
-      void Render() const override;
-    };
-    struct TLambertShader : ACS::TComponent
-    {
-      TTransform*    pTransform    = nullptr;
-      TMesh*         pMesh         = nullptr;
-      TShaderLayout* pShaderLayout = nullptr;
-
-      TLambertShader(TActor* pActor, TShaderLayout* pShaderLayout);
+      TShader(TActor* pActor, ShaderLayout::TShaderProgram* pShader);
 
       void Render() const override;
     };

@@ -1,18 +1,47 @@
 #pragma once
 
 #include "Core.h"
+#include "StandardShaders.h"
 
-struct TShaderLayout
+namespace ShaderLayout
 {
-  u32 program        = 0;
-  u32 vertexShader   = 0;
-  u32 fragmentShader = 0;
+  enum class TShaderType : s32
+  {
+    None = -1,
+    StandardShader,
+    ComputeShader,
+  };
 
-  TShaderLayout() = default;
-  virtual ~TShaderLayout() = default;
+  struct TShaderProgram
+  {
+    TShaderType type    = TShaderType::None;
+    u32         program = 0;
 
-  s32 CheckStatus(s32 shader, s32 type) const;
-  s32 LinkShaders() const;
-  s32 CompileShader(u32 shader, const s8* pSource) const;
-  s32 CompileShaders(const s8* pVertexSource, const s8* pFragmentSource);
-};
+    TShaderProgram(TShaderType type) : type(type) {}
+    virtual ~TShaderProgram()
+    {
+      //glDeleteProgram(program);
+    }
+  };
+  struct TLambertShader<TLambertVertexSource, TLambertVertexSource> : TShaderProgram
+  {
+    TStandardProgram()
+      : TShaderProgram(TShaderType::StandardShader) {}
+  };
+  struct TTransformationProgram : TShaderProgram
+  {
+    TComputeShader()
+      : TShaderProgram(TShaderType::ComputeShader) {}
+  };
+
+  static s32 CheckStatus(s32 shader, s32 type);
+  static s32 LinkShader(u32 program, u32 shader);
+  static s32 CompileShader(u32 shader, const s8* pSource);
+
+  template<typename T, typename ... TSources>
+  requires std::is_same_v<TShaderType, T>
+  inline static s32 MakeProgram(TShaderProgram* pShader, TSources&& ... pSource)
+  {
+
+  }
+}

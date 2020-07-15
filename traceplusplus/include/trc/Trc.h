@@ -1,11 +1,12 @@
 #pragma once
 
 #include "Core.h"
-#include "FwDecl.h"
+#include "Utils.h"
 #include "ACS.h"
 #include "Events.h"
-#include "Shaders.h"
+#include "StandardShaders.h"
 #include "VertexLayout.h"
-#include "ShaderLayout.h"
+#include "StandardShaders.h"
+#include "ComputeShaders.h"
 #include "Scene.h"
 #include "Renderer.h"

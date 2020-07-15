@@ -7,37 +7,27 @@ struct TRenderer : ACS::TInstance<TRenderer>
 {
   struct TRenderJob
   {
-    TVertexLayout* pVertexLayout = nullptr;
-    TShaderLayout* pShaderLayout = nullptr;
+    TVertexLayout*                pVertexLayout = nullptr;
+    ShaderLayout::TShaderProgram* pShader       = nullptr;
 
     TRenderJob(
       TVertexLayout* pVertexLayout,
-      TShaderLayout* pShaderLayout)
+      ShaderLayout::TShaderProgram* pShader)
       : pVertexLayout(pVertexLayout)
-      , pShaderLayout(pShaderLayout) {}
+      , pShader(pShader) {}
     virtual ~TRenderJob() = default;
   };
   struct TRenderJobComp
   {
-    auto operator ()(const TRenderJob& lhs, const TRenderJob& rhs) const
+    inline auto operator ()(const TRenderJob& lhs, const TRenderJob& rhs) const
     {
-      return lhs.pVertexLayout != rhs.pVertexLayout &&
-             lhs.pShaderLayout != rhs.pShaderLayout;
+      return lhs.pVertexLayout != rhs.pVertexLayout && lhs.pShader != rhs.pShader;
     }
   };
 
   struct TTechnic
   {
     
-  };
-  struct TTransfomrationTechnic : TTechnic
-  {
-    ACS::Components::TTransform* pTransform = nullptr;
-
-    TTransfomrationTechnic(
-      ACS::Components::TTransform* pTransform)
-      : TTechnic()
-      , pTransform(pTransform) {}
   };
   struct TLambertTechnic : TTechnic
   {
@@ -49,21 +39,14 @@ struct TRenderer : ACS::TInstance<TRenderer>
       , pTransform(pTransform) {}
   };
 
-  std::set<TRenderJob, TRenderJobComp> transformationPass     = {};
   std::set<TRenderJob, TRenderJobComp> lambertPass            = {};
-  std::vector<TTransfomrationTechnic>  transformationTechnics = {};
   std::vector<TLambertTechnic>         lambertTechnics        = {};
 
   template<typename T>
   requires std::is_base_of_v<TTechnic, T>
   inline void Submit(const TRenderJob& job, const T& technic)
   {
-    if constexpr (std::is_same_v<TTransfomrationTechnic, T>)
-    {
-      transformationPass.emplace(job);
-      transformationTechnics.emplace_back(technic);
-    }
-    else if constexpr (std::is_same_v<TLambertTechnic, T>)
+    if constexpr (std::is_same_v<TLambertTechnic, T>)
     {
       lambertPass.emplace(job);
       lambertTechnics.emplace_back(technic);

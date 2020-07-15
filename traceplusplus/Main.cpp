@@ -209,13 +209,9 @@ s32 main()
   if (!vertexLayout.CreateBuffers())
     return FAILED_CREATING_BUFFER;
 
-  TShaderLayout shaderLayoutTransformations;
-  TShaderLayout shaderLayoutLambert;
+  ShaderLayout::TShaderProgram* pLambertShader = nullptr;
 
-  if (!shaderLayoutTransformations.CompileShaders(VertexTransformations, FragmentTransformations))
-    return FAILED_LOADING_SHADER;
-
-  if (!shaderLayoutLambert.CompileShaders(VertexLambert, FragmentLambert))
+  if (!ShaderLayout::MakeProgram<ShaderLayout::TShaderType::StandardShader>(pLambertShader, TLambertVertexSource::Value, TLambertFragmentSource::Value))
     return FAILED_LOADING_SHADER;
 
   // TODO: general ACS improvements!
@@ -240,8 +236,7 @@ s32 main()
       pScene->Attach<ACS::Components::TMesh>(pCubeBufferActor, &vertexLayout);
       // TODO: ShaderStage.h -> each stage executes a variety of different shaders
       // in order to encapsulate multi pass shader algorithms into objects
-      pScene->Attach<ACS::Components::TTransformationShader>(pCubeBufferActor, pCubeBufferActor, &shaderLayoutTransformations);
-      pScene->Attach<ACS::Components::TLambertShader>(pCubeBufferActor, pCubeBufferActor, &shaderLayoutLambert);
+      pScene->Attach<ACS::Components::TShader>(pCubeBufferActor, pCubeBufferActor, pLambertShader);
       pScene->Attach<TCubeController, ACS::Components::TController>(pCubeBufferActor, pCubeBufferActor);
     }
 
@@ -313,11 +308,11 @@ s32 main()
     pRenderer->Flush();
 
     MEASURE_BEGIN(SceneRender);
-    pScene->Render();
+    //pScene->Render();
     MEASURE_END(SceneRender);
 
     MEASURE_BEGIN(RenderRender);
-    pRenderer->Render(pCamera);
+    //pRenderer->Render(pCamera);
     MEASURE_END(RenderRender);
 
     ImGui::Begin("Measurements");
